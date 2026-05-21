@@ -1,92 +1,43 @@
 import json
-import os
-import requests
-from openai import OpenAI
-from datetime import datetime
+from llm import LLM
+from tools import Tools
+from utils import RED, RESET, SYSTEM_PROMPT
 
-## TODO: 多轮对话
-
-
-RED = "\033[91m"
-RESET = "\033[0m"
+llm = LLM()
+tools = Tools()
+messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
 
-llm = OpenAI(api_key=os.environ.get('DEEPSEEK_API_KEY'), base_url="https://api.deepseek.com")
-
-system_prompt = """你是ReAct Agent, 输出格式: Thought:...\nAction:工具|参数 或 Results:...
-工具列表:
-    fundamental: 获取指数基本面数据, 需要日期作为参数: date, 格式: {"date": "YYYY-MM-DD"}
-    get_date: 获取当前日期, 无参数
-
-注意:    
-1. 如果工具不需要参数, 则参数部分可以省略, 如: Action:get_date|
-2. 注意'|'不要被丢掉, 即便没有参数也要存在
-3. 参数必须是json格式字符串, 如: Action:fundamental|{"date": "2024-06-01"}"""
-
-
-def llm_response_context(question):
-    response = llm.chat.completions.create(
-        model="deepseek-v4-pro",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": question},
-        ],
-        stream=False,
-        reasoning_effort="high",
-        extra_body={"thinking": {"type": "enabled"}},
-    )
-    return response.choices[0].message.content
-
-
-def execute_tool(tool, param):
-    param = json.loads(param) if param else {}
-
-    if tool == "fundamental":
-        return fundamental(**param)
-    elif tool == "get_date":
-        return get_date()
-
-
-def fundamental(date: str):
-    response = requests.post(
-        url="https://open.lixinger.com/api/hk/index/fundamental",
-        json={
-            "token": os.environ.get('lixinger'),
-            "date": date,
-            "stockCodes": ["HSTECH"],
-            "metricsList": [
-                "pe_ttm.y5.mcw.cvpos",
-            ],
-        },
-    )
-    return response.json()
-
-
-def get_date():
-    return {"date": datetime.now().strftime('%Y-%m-%d')}
-
-
-def agent_loop(goal):
-    context = f"Question: {goal}\n"
+def agent_loop(question, max_steps: int = 5):
+    messages.append({"role": "user", "content": question})
 
     try:
-        for _ in range(5):
-            response = llm_response_context(context + "Next step:")
-            context += response + "\n"
+        for _ in range(max_steps):
+            response = llm.llm_response_context(messages)
+            messages.append({"role": "assistant", "content": response})
 
             if "Results:" in response:
-                return response.split('Results:')[1], context
+                return response.split('Results:')[1]
             elif "Action:" in response:
                 tool, param = response.split("Action:")[1].split("|")
-                observation = execute_tool(tool, param)
-                context += f"Observation: {observation}\n"
-        return None, context
+                observation = tools.execute_tool(tool, param)
+                messages.append({"role": "user", "content": f"Observation: {observation}"})
+        return "已到单任务最大步数, 但很遗憾仍未得到结果, 终止执行."
     except Exception as e:
-        return None, context + f"{RED}Error: {str(e)}{RESET}\n"
+        return f"{RED}Error: {str(e)}{RESET}"
 
 
 if __name__ == "__main__":
-    result, context = agent_loop("请帮我查看今年4月1日的指数基本面数据")
-    print(result)
-    print("\n========== context ==========")
-    print(context)
+    try:
+        while True:
+            question = input("请输入你的问题, 输入 'exit' 退出: ")
+            if question == "exit":
+                print("Bye~")
+                break
+            result = agent_loop(question)
+            print(result)
+    except Exception as e:
+        print(f"{RED}Error: {str(e)}{RESET}")
+    finally:
+        with open(".history.json", "w", encoding="utf-8") as f:
+            json.dump(messages, f, indent=4, ensure_ascii=False)
