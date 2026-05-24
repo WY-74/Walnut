@@ -1,3 +1,5 @@
 __pycache__/
 walnut/
+logs/
 .history.json
+test.py
