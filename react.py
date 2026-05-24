@@ -1,13 +1,19 @@
 import json
 import asyncio
 import os
+
 from llm import LLM
 from tools import Tools
 from mcp_client import open_mcp_session
-from utils import RED, RESET, SYSTEM_PROMPT, RULES
+from prompts import SYSTEM_PROMPT, RULES
+from logging_setup import configure_logging
 
 llm = LLM()
+RED = "\033[91m"
+RESET = "\033[0m"
 MESSAGES = [{"role": "system", "content": ""}]
+
+logger = configure_logging("react")
 
 
 async def agent_loop(question, tools, max_steps: int = 5):
@@ -16,6 +22,8 @@ async def agent_loop(question, tools, max_steps: int = 5):
     try:
         for _ in range(max_steps):
             response = llm.llm_response_context(MESSAGES)
+            logger.info(f"Agent response: {response}")
+
             MESSAGES.append({"role": "assistant", "content": response})
 
             if "Results:" in response:
@@ -24,6 +32,8 @@ async def agent_loop(question, tools, max_steps: int = 5):
                 tool, param = response.split("Action:")[1].split("|")
                 observation = await tools.execute_tool(tool.strip(), param.strip())
                 MESSAGES.append({"role": "user", "content": f"Observation: {observation}"})
+            else:
+                MESSAGES.append({"role": "user", "content": "请按照规定的格式输出, 以便我能正确解析！"})
         return "已到单任务最大步数, 但很遗憾仍未得到结果, 终止执行."
     except Exception as e:
         return f"{RED}Error: {str(e)}{RESET}"
