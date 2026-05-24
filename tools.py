@@ -1,32 +1,26 @@
-import os
 import json
-import requests
-from datetime import datetime
 
 
 class Tools:
-    def execute_tool(self, tool, param):
-        param = json.loads(param) if param else {}
-        param['tool_name'] = tool
+    def __init__(self, session):
+        self.session = session
 
-        return getattr(self, tool, self.unknown_tool)(**param)
+    async def execute_tool(self, tool, param):
+        arguments = json.loads(param) if param else {}
 
-    def unknown_tool(self, **kwargs):
-        return {"msg": f"Unknown tool \"{kwargs['tool_name']}\", please check the tool name."}
+        result = await self.session.call_tool(tool, arguments)
 
-    def fundamental(self, date: str, **kwargs):
-        response = requests.post(
-            url="https://open.lixinger.com/api/hk/index/fundamental",
-            json={
-                "token": os.environ.get('lixinger'),
-                "date": date,
-                "stockCodes": ["HSTECH"],
-                "metricsList": [
-                    "pe_ttm.y5.mcw.cvpos",
-                ],
-            },
-        )
-        return response.json()
+        content_parts = []
+        for item in result.content:
+            if getattr(item, "type", None) == "text":
+                content_parts.append(item.text)
+            else:
+                content_parts.append(str(item))
 
-    def get_date(self, **kwargs):
-        return {"date": datetime.now().strftime('%Y-%m-%d')}
+        payload = {"content": content_parts}
+        structured = getattr(result, "structuredContent", None)
+        if structured is not None:
+            payload["structuredContent"] = structured
+        payload["isError"] = getattr(result, "isError", False)
+
+        return payload
