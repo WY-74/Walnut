@@ -5,12 +5,11 @@ from datetime import datetime
 from mcp.server.fastmcp import FastMCP
 from logging_setup import configure_logging
 
-
 mcp = FastMCP("Walnut Tools")
 logger = configure_logging("mcp_tools")
 
 
-@mcp.tool()
+@mcp.tool(meta={"version": "1.0.0"})
 def fundamental(date: str) -> str:
     """获取指数基本面数据, 需要日期作为参数: date, 格式: {"date": "YYYY-MM-DD"}"""
     logger.info(f"Params: data={date}")
@@ -30,7 +29,7 @@ def fundamental(date: str) -> str:
     return json.dumps(response.json(), ensure_ascii=False, separators=(",", ":"))
 
 
-@mcp.tool()
+@mcp.tool(meta={"version": "1.0.0"})
 def get_date() -> str:
     """获取当前日期(YYYY-MM-DD), 无参数"""
     result = {"date": datetime.now().strftime('%Y-%m-%d')}

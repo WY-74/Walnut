@@ -9,6 +9,8 @@ class Tools:
         arguments = json.loads(param) if param else {}
 
         result = await self.session.call_tool(tool, arguments)
+        print(result)
+        print("===================================")
 
         content_parts = []
         for item in result.content:

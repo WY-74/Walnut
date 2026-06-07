@@ -16,7 +16,7 @@ MESSAGES = [{"role": "system", "content": ""}]
 logger = configure_logging("react")
 
 
-async def agent_loop(question, tools, max_steps: int = 5):
+async def agent_loop(question, tools: Tools, max_steps: int = 5):
     MESSAGES.append({"role": "user", "content": question})
 
     try:
@@ -70,7 +70,3 @@ if __name__ == "__main__":
     finally:
         with open(".history.json", "w", encoding="utf-8") as f:
             json.dump(MESSAGES, f, indent=4, ensure_ascii=False)
-
-    ## TODO: 完善session.list_tools的工具的属性
-    ## TODO: 完善session.call_tool的工具的属性
-    ## TODO: 日志
