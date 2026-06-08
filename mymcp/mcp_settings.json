@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+        "lixinger": {
+            "command": "D:/projects/Walnut/walnut/Scripts/python.exe",
+            "args": ["mymcp/mcp_tools.py"],
+            "env": {
+                "LIXINGER_TOKEN": "${LIXINGER_TOKEN}"
+            }
+        }
+    }
+}
