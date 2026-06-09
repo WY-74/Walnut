@@ -6,5 +6,6 @@
 2. `python react.py ` 启动client
 
 ## 当前状态
+- 支持 REACT
 - 可以维护多Session生命周期，意味着可以同时注册多个内/外部工具
 - 实现了日志记录(logs/*)，以及对话记录留存(.history.json)
