@@ -2,7 +2,7 @@ import json
 import asyncio
 
 from core import LLM, Tools
-from mymcp.mcp_client import open_mcp_manager, open_mcp_session
+from client.mcp_client import open_mcp_manager
 from prompts import SYSTEM_PROMPT, RULES
 from utils.settings import load_settings
 from utils.logging_setup import configure_logging
