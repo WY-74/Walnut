@@ -2,7 +2,7 @@ import json
 import asyncio
 
 from core import LLM, Tools
-from client.mcp_client import open_mcp_manager
+from client import open_manager
 from prompts import SYSTEM_PROMPT, RULES
 from utils.settings import load_settings
 from utils.logging_setup import configure_logging
@@ -50,8 +50,8 @@ async def build_system_prompt(manager):
 
 
 async def main():
-    mcp_settings = load_settings()
-    async with open_mcp_manager(mcp_settings) as manager:
+    settings = load_settings()
+    async with open_manager(settings) as manager:
         tools = Tools(manager)
         MESSAGES[0]["content"] = await build_system_prompt(manager)
 
@@ -66,10 +66,10 @@ async def main():
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except Exception as e:
-        print(f"{RED}Error: {str(e)}{RESET}")
-    finally:
-        with open(".history.json", "w", encoding="utf-8") as f:
-            json.dump(MESSAGES, f, indent=4, ensure_ascii=False)
+    # try:
+    asyncio.run(main())
+    # except Exception as e:
+    #     print(f"{RED}Error: {str(e)}{RESET}")
+    # finally:
+    #     with open(".history.json", "w", encoding="utf-8") as f:
+    #         json.dump(MESSAGES, f, indent=4, ensure_ascii=False)
