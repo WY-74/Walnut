@@ -142,8 +142,11 @@ class Manager:
         description = self.resolve_skill_description(spec.skill_path)
         self.tools[full_name] = ToolSpec(server_name="skill", tool_name=spec.skill_name, tool_description=description)
 
-    def list_tools(self) -> list[ToolSpec]:
-        return [self.tools[name] for name in sorted(self.tools)]
+    def list_tools(self, tool_type: str) -> list[ToolSpec]:
+        if tool_type == "skill":
+            return [self.tools[name] for name in sorted(self.tools) if name.startswith("skill.")]
+        else:
+            return [self.tools[name] for name in sorted(self.tools) if not name.startswith("skill.")]
 
     def resolve_tool(self, tool_name: str) -> ToolSpec:
         if tool_name in self.tools:
@@ -155,4 +158,4 @@ class Manager:
         with open(Path(skill_path) / "SKILL.md", "r", encoding="utf-8") as f:
             lines = f.readlines()
 
-        return lines[2].strip() if len(lines) > 2 else ""
+        return lines[2].split(":")[1].strip() if len(lines) > 2 else ""

@@ -13,3 +13,6 @@
 
 ## TODO:
    1. 自己实现mcp和skill平级的agent（skill为理性仁，mcptools为notion）
+   2. references/ skill需可以加载文件, 启用subagent
+   3. assets/, 加载模板类文件
+   4. scripts
