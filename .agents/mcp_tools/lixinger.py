@@ -4,7 +4,7 @@ import requests
 from datetime import datetime
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("Walnut Tools")
+mcp = FastMCP("Lixinger")
 
 
 @mcp.tool(meta={"version": "1.0.0"})
@@ -33,6 +33,22 @@ def get_date() -> str:
     result = {"date": datetime.now().strftime('%Y-%m-%d')}
     # logger.info(f"Result: {result}")
     return json.dumps(result, ensure_ascii=False, separators=(",", ":"))
+
+
+@mcp.tool(meta={"version": "1.0.0"})
+def get_hk_stockcodes(name: str) -> str:
+    """获取指数名对应的stockcode, 需要指数名称作为参数: name, 格式: {"name": "xxx"}"""
+    response = requests.post(
+        url="https://open.lixinger.com/api/hk/index",
+        json={"token": os.environ.get('LIXINGER_TOKEN')},
+    )
+
+    data = response.json()
+    for item in data.get("data", []):
+        if item.get("name") == name:
+            return json.dumps({"stockCode": item.get("stockCode")}, ensure_ascii=False, separators=(",", ":"))
+        else:
+            return json.dumps({"stockCode": None}, ensure_ascii=False, separators=(",", ":"))
 
 
 if __name__ == "__main__":
