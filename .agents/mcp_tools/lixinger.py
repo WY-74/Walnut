@@ -45,10 +45,12 @@ def get_hk_stockcodes(name: str) -> str:
 
     data = response.json()
     for item in data.get("data", []):
-        if item.get("name") == name:
-            return json.dumps({"stockCode": item.get("stockCode")}, ensure_ascii=False, separators=(",", ":"))
+        if item.get("name") != name:
+            continue
         else:
-            return json.dumps({"stockCode": None}, ensure_ascii=False, separators=(",", ":"))
+            return json.dumps({"stockCode": item.get("stockCode")}, ensure_ascii=False, separators=(",", ":"))
+
+    return json.dumps({"stockCode": None}, ensure_ascii=False, separators=(",", ":"))
 
 
 if __name__ == "__main__":

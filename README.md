@@ -18,5 +18,4 @@
    4. scripts
    5. 工具失败(tool错误，参数错误，执行错误)和没有工具的处理
    
-   1. 降级到MCP后 "Action: lixinger.get_hk_stockcodes|{\"name\": \"恒生科技指数\"}" 但为什么Observation又读了一遍SKILL.md
-   2. 启用小agent处理skill任务，不然很难处理tools切换问题
+   1. 启用小agent处理skill任务，不然很难处理tools切换问题

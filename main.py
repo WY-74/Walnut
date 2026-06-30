@@ -39,18 +39,20 @@ async def open_manager(settings: dict):
     manager = Manager()
 
     mcp_server_specs, skills_specs = load_specs(settings)
+    logger.info(f"Loaded MCP server specs: {mcp_server_specs}")
+    logger.info(f"Loaded Skills specs: {skills_specs}")
 
     async with AsyncExitStack() as stack:
         for spec in mcp_server_specs:
             await manager.add_mcp_server(spec, stack)
-        for spec in skills_specs:
-            await manager.add_skill_server(spec, stack)
+        await manager.add_skill_server(skills_specs, stack)
         yield manager
 
 
 async def agent_loop(question: str, manager: Manager, max_steps: int = 10):
     await message.add_message("user", question)
     level = 2  # level-0: LLM, level-1: mcp, level-2: skill
+    logger.info(f"Starting agent loop with question: {question} and level: {level}")
 
     try:
         for _ in range(max_steps):
@@ -62,11 +64,12 @@ async def agent_loop(question: str, manager: Manager, max_steps: int = 10):
 
             if "Results:" in response:
                 result = response.split('Results:')[1].strip()
+                logger.info(f"Extracted result: {result}")
 
                 # 判断是否命中Skills, 如果没有命中则改用MCPTools, 如果均未命中则询问用户是否网络查讯作为参考
                 if result == "No Tool Available":
-                    level = await message.downgrade_system_message(level)
-                    logger.info(f"Downgraded system message to level {level}")
+                    level -= 1
+                    await message.downgrade_system_message(level)
 
                     if level == 0:
                         while True:
@@ -84,9 +87,9 @@ async def agent_loop(question: str, manager: Manager, max_steps: int = 10):
 
             elif "Action:" in response:
                 tool, param = response.split("Action:")[1].split("|", 1)
-                logger.info(f"tool and param: {tool.strip()}, {param.strip()}")
 
                 observation = await manager.call_tool(tool.strip(), param.strip())
+                logger.info(f"Observation: {observation}")
                 if observation is None:
                     await message.add_message(
                         "user", f"工具 '{tool.strip()}' 未找到, 请核对我提供的工具列表后重新输出!"
@@ -106,7 +109,6 @@ async def main():
 
     async with open_manager(settings) as manager:
         await message.init_message(manager)
-        logger.info(f"Initialized message context: {message.context}")
 
         while True:
             question = input("请输入你的问题, 输入 'exit' 退出: ")

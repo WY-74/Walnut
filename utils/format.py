@@ -13,6 +13,7 @@ class MCPServerSpec:
 class SkillServerSpec:
     skill_name: str
     skill_path: str
+    skill_description: str = ""
 
 
 @dataclass(frozen=True)
