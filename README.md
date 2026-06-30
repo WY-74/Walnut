@@ -19,3 +19,4 @@
    5. 工具失败(tool错误，参数错误，执行错误)和没有工具的处理
    
    1. 启用小agent处理skill任务，不然很难处理tools切换问题
+   2. 优化当前mcp tools fundamental内部（不需要传入参数就可以使用）

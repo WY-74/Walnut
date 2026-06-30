@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, List, Dict
 from mcp.types import TextContent, CallToolResult
 
+# from utils.core import Agent
 from utils.format import SkillServerSpec
 
 
@@ -23,6 +24,8 @@ class SkillSession:
         return self.skills
 
     async def call_tool(self, tool_name: str, *args, **kwargs) -> dict[str, Any]:
+        # TODO: 这里需要调用子Agent来执行技能, 并返回结果
+        # TODO: 无法在这里import core.Agent, 因为会导致循环依赖
         for skill in self.skills:
             if tool_name == skill.skill_name:
                 content = self._resolve_skill_detail(skill.skill_path)

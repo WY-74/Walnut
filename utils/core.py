@@ -1,7 +1,7 @@
 import os
 import json
 
-from typing import Any, List
+from typing import Any, List, Dict
 from openai import OpenAI
 from pathlib import Path
 from mcp.client.stdio import stdio_client
@@ -20,7 +20,7 @@ class LLM:
     def __init__(self):
         self.llm = OpenAI(api_key=os.environ.get('DEEPSEEK_API_KEY'), base_url="https://api.deepseek.com")
 
-    def llm_response_context(self, messages):
+    def response_context(self, messages):
         response = self.llm.chat.completions.create(
             model="deepseek-v4-pro",
             messages=messages,
@@ -29,6 +29,141 @@ class LLM:
             extra_body={"thinking": {"type": "enabled"}},
         )
         return response.choices[0].message.content
+
+
+class Agent:
+    def __init__(self, settings: Dict[str, Any], agent_level: str = "main", max_agent_loops: int = 5):
+        """
+        Agent Level:
+            main: The main agent can conduct multiple rounds of dialogue.
+            sub: Only used for sub-agents, which can only conduct a single round of dialogue.
+        """
+        self.message = Message()
+        self.llm = LLM()
+
+        self.settings = settings
+        self.agent_level = agent_level
+        self.max_agent_loops = max_agent_loops
+
+    def _load_specs(self, settings: dict) -> tuple[list[MCPServerSpec], list[SkillServerSpec]]:
+        # MCP
+        mcp_servers = settings.get("mcpServers", {})
+        mcp_specs: list[MCPServerSpec] = []
+        for name, cfg in mcp_servers.items():
+            mcp_specs.append(
+                MCPServerSpec(
+                    mcp_server_name=name,
+                    mcp_command=cfg["command"],
+                    mcp_args=cfg.get("args", []),
+                    mcp_env=cfg.get("env", {}),
+                )
+            )
+
+        # Skill
+        skills = settings.get("skills", {})
+        skill_specs: list[SkillServerSpec] = []
+        for name, cfg in skills.items():
+            skill_specs.append(SkillServerSpec(skill_name=name, skill_path=cfg["dir"]))
+
+        return mcp_specs, skill_specs
+
+    @asynccontextmanager
+    async def _open_manager(self, settings: dict):
+        manager = Manager()
+
+        mcp_server_specs, skills_specs = self._load_specs(settings)
+        logger.info(f"Loaded MCP server specs: {mcp_server_specs}")
+        logger.info(f"Loaded Skills specs: {skills_specs}")
+
+        async with AsyncExitStack() as stack:
+            for spec in mcp_server_specs:
+                await manager.add_mcp_server(spec, stack)
+            await manager.add_skill_server(skills_specs, stack)
+            yield manager
+
+    async def _agent_loop(self, question: str):
+        await self.message.add_message("user", question)
+        level = 2  # level-0: LLM, level-1: mcp, level-2: skill
+        logger.info(f"Starting agent loop with question: {question} and level: {level}")
+
+        try:
+            for _ in range(self.max_agent_loops):
+                response = self.llm.response_context(messages=self.message.context)
+                logger.info(f"LLM response: {response}")
+
+                await self.message.add_message("assistant", response)
+
+                if "Results:" in response:
+                    result = response.split('Results:')[1].strip()
+
+                    # 判断是否命中Skills, 如果没有命中则改用MCPTools, 如果均未命中则询问用户是否网络查讯作为参考
+                    if result == "No Tool Available":
+                        if level == 2:
+                            await self.message.downgrade_system_message(self.valid_mcp_tools, SYSTEM_PROMPT)
+                        if level == 1:
+                            await self.message.downgrade_system_message([], SYSTEM_PROMPT_WITHOUT_TOOLS)
+                        if level == 0:
+                            return await self._level_0_loop()
+
+                        level -= 1
+                        continue
+
+                    return result
+
+                elif "Action:" in response:
+                    tool, param = response.split("Action:")[1].split("|", 1)
+                    observation = await self.manager.call_tool(tool.strip(), param.strip())
+                    # TODO: 处理子Agent
+
+                    if observation is None:
+                        await self.message.add_message(
+                            "user", f"工具 '{tool.strip()}' 未找到, 请核对我提供的工具列表后重新输出!"
+                        )
+                        continue
+
+                    await self.message.add_message("user", f"Observation: {observation}")
+
+                else:
+                    await self.message.add_message("user", "请按照规定的格式输出, 以便我能正确解析!")
+
+            return "[任务步不足]很遗憾未能完成任务, 请问还有什么我可以帮您的吗?"
+
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    async def _level_0_loop(self):
+        while True:
+            network = input("未命中任何工具, 是否使用网络查讯作为参考? (y/n): ")
+            if network.lower() == "y":
+                return self.llm.response_context(self.message.context)
+            elif network.lower() == "n":
+                return "[未命中工具]很遗憾未能完成任务, 请问还有什么我可以帮您的吗?"
+            else:
+                print("输入无效, 请重新输入!")
+                continue
+
+    async def run(self):
+        async with self._open_manager(self.settings) as self.manager:
+
+            self.valid_skills = self.manager.list_tools("skill")
+            self.valid_mcp_tools = self.manager.list_tools("mcp")
+
+            if self.agent_level == "main":
+                await self.message.init_message(self.valid_skills, SYSTEM_PROMPT)
+
+                while True:
+                    question = input("请输入问题或想要完成的任务, 输入 'exit' 退出: ")
+                    if question.lower() == "exit":
+                        print("Bye~~")
+                        break
+
+                    result = await self._agent_loop(question)
+                    print(result)
+
+            elif self.agent_level == "sub":
+                await self.message.init_message(self.valid_mcp_tools, SYSTEM_PROMPT)
+
+                # TODO: 这里需要处理子Agent的逻辑, 目前暂时不支持子Agent
 
 
 class Manager:
@@ -127,52 +262,42 @@ class Manager:
 
 
 class Message:
-    def __init__(self, manager: Manager = None):
+    def __init__(self):
         self.context = []  # 当前对话记录
         self.history = []  # 留存完整对话记录
-        self.manager = manager
 
-    async def init_message(self, manager: Manager):
-        """
-        初始化对话消息, 将系统提示和Skill工具列表加入到context和history
-        """
-        self.manager = manager
-        self.valid_skills = self.manager.list_tools("skill")
-        self.valid_mcp_tools = self.manager.list_tools("mcp")
+    async def init_message(self, tools: list[ToolSpec], system_prompt: str):
+        """初始化对话消息"""
+        valid_tools = []
+        for tool in tools:
+            valid_tools.append(f"- {tool.server_name}.{tool.tool_name}: {tool.tool_description}")
 
-        _tools = []
-        for tool in self.valid_skills:
-            _tools.append(f"- {tool.server_name}.{tool.tool_name}: {tool.tool_description}")
-
-        content = SYSTEM_PROMPT + f"\n\n可用工具:\n{'\n'.join(_tools)}"
+        if valid_tools:
+            content = system_prompt + f"\n\n可用工具:\n{'\n'.join(valid_tools)}"
+        else:
+            content = system_prompt
 
         self.context.append({"role": "system", "content": content})
         self.history.append({"role": "system", "content": content})
 
         logger.info(f"Initialized message: {content}")
 
-    async def downgrade_system_message(self, level: int):
+    async def downgrade_system_message(self, tools: list[ToolSpec], system_prompt: str):
         """
-        在高级别未命中的情况下发生降级 (level 1: mcp, level 0: without tools),
         该操作会重写context, 但不会重置工具调用次数, 也不会重置history
         """
-        if level == 1:
-            _tools = []
-            for tool in self.valid_mcp_tools:
-                _tools.append(f"- {tool.server_name}.{tool.tool_name}: {tool.tool_description}")
+        if tools:
+            valid_tools = []
+            for tool in tools:
+                valid_tools.append(f"- {tool.server_name}.{tool.tool_name}: {tool.tool_description}")
 
-            content = SYSTEM_PROMPT + f"\n\n可用工具:\n{'\n'.join(_tools)}"
+            content = system_prompt + f"\n\n可用工具:\n{'\n'.join(valid_tools)}"
+        else:
+            content = system_prompt
 
-            self.context[0]["content"] = content
-            self.history.append({"role": "system", "content": content})
+        self.context[0]["content"] = content
+        self.history.append({"role": "system", "content": content})
 
-        if level == 0:
-            content = SYSTEM_PROMPT_WITHOUT_TOOLS
-
-            self.context[0]["content"] = content
-            self.history.append({"role": "system", "content": content})
-
-        logger.info(f"Downgraded system message to level {level}")
         logger.info(f"Current message context: {content}")
 
     async def add_message(self, role: str, content: str):

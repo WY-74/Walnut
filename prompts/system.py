@@ -14,10 +14,11 @@ Results: No Tool Available
 
 **注意**:    
 1. 不要做任何假设和猜想, 所有的推理和决策必须基于你所拥有的工具, 且不要自行创造工具.
-2. 禁止直接输出Action或Results, 必须包含Thought
-3. 如果工具不需要参数, 则参数部分可以省略 (如: Action:xxx|)
-4. 注意'|'不要被丢掉, 即便没有参数也要存在
-5. 参数必须是json格式字符串, 如: Action:xxx|{"xxx": "xxx"}
+2. 输出Action或Results时必须包含Thought
+3. 如果工具有参数传入则需要在Thought中核对参数名
+4. 如果工具不需要参数, 则参数部分可以省略 (如: Action:xxx|)
+5. 注意'|'不要被丢掉, 即便没有参数也要存在
+6. 参数必须是json格式字符串, 如: Action:xxx|{"xxx": "xxx"}
 """
 
 SYSTEM_PROMPT_WITHOUT_TOOLS = "请回答用户提出问题"
