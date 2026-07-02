@@ -2,7 +2,7 @@
     "mcpServers": {
         "lixinger": {
             "command": "D:/projects/Walnut/walnut/Scripts/python.exe",
-            "args": ["mymcp/mcp_tools.py"],
+            "args": [".agents/mcp_tools/lixinger.py"],
             "env": {
                 "LIXINGER_TOKEN": "${LIXINGER_TOKEN}"
             }
@@ -13,6 +13,11 @@
             "env": {
                 "NOTION_TOKEN": "${NOTION_TOKEN}"
             }
+        }
+    },
+    "skills": {
+        "lixinger": {
+            "dir": ".agents/skills/lixinger"
         }
     }
 }
