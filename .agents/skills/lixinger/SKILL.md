@@ -1,6 +1,6 @@
 ---
 name: lixinger
-description: 查讯某日某个指数基本面信息。当用户要求"查讯xxx日xxx基本面信息"时使用, 无需参数
+description: 查讯某日某个指数基本面信息。当用户要求查讯xxx日xxx基本面信息时使用
 ---
 
 ## 执行流程

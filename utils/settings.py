@@ -9,8 +9,8 @@ def _resolve_env_value(value: str) -> str:
     return value
 
 
-def load_settings():
-    data = json.loads(Path("settings.json").read_text(encoding="utf-8"))
+def load_settings(path: str = "settings.json") -> dict[str, any]:
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
 
     # MCPTools 需要处理环境变量
     mcp_servers = data.get("mcpServers", {})

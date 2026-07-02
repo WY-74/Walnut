@@ -1,9 +1,10 @@
-from pathlib import Path
 from typing import Any, List, Dict
-from mcp.types import TextContent, CallToolResult
+from pathlib import Path
+from mcp.types import CallToolResult, TextContent
 
-# from utils.core import Agent
+from prompts.system import SKILL_SYSTEM_PROMPT
 from utils.format import SkillServerSpec
+from utils.settings import load_settings
 
 
 class SkillSession:
@@ -23,13 +24,14 @@ class SkillSession:
     async def list_tools(self) -> List[Dict[str, Any]]:
         return self.skills
 
-    async def call_tool(self, tool_name: str, *args, **kwargs) -> dict[str, Any]:
-        # TODO: 这里需要调用子Agent来执行技能, 并返回结果
-        # TODO: 无法在这里import core.Agent, 因为会导致循环依赖
+    async def call_tool(self, skill_name: str, *args, **kwargs) -> dict[str, Any]:
         for skill in self.skills:
-            if tool_name == skill.skill_name:
-                content = self._resolve_skill_detail(skill.skill_path)
-        return CallToolResult(content=[TextContent(type="text", text="按照以下详细步骤执行任务" + content)])
+            if skill_name == skill.skill_name:
+                skill_detail = self._resolve_skill_detail(skill.skill_path)
+
+                return CallToolResult(content=[TextContent(type="text", text=SKILL_SYSTEM_PROMPT.format(skill_detail))])
+
+        return None
 
     def _resolve_skill_description(self, skill_path: str) -> str:
         with open(Path(skill_path) / "SKILL.md", "r", encoding="utf-8") as f:
