@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager, AsyncExitStack
 from typing import Any, Dict, Callable, Awaitable
 
-from prompts.system import SYSTEM_PROMPT, SKILL_SYSTEM_PROMPT, SYSTEM_PROMPT_WITHOUT_TOOLS
+from core.prompts.system import SYSTEM_PROMPT, SKILL_SYSTEM_PROMPT, SYSTEM_PROMPT_WITHOUT_TOOLS
 from core.llm import LLM
 from core.message import Message
 from core.tool_manager import ToolManager

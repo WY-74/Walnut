@@ -17,7 +17,8 @@
     },
     "skills": {
         "lixinger": {
-            "dir": ".agents/skills/lixinger"
+            "dir": ".agents/skills/lixinger",
+            "need_tools": ["lixinger"]
         }
     }
 }

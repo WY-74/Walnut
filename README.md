@@ -12,3 +12,9 @@
 - skills被封装在一个单独的Session内，这意味着skills与mcp平级
 - skills内可以使用mcp工具
 - 实现了日志记录(logs/*)，以及对话记录留存(.history.json)
+
+
+## TODO:
+   1. references/ skill需可以加载文件, 启用subagent
+   2. assets/, 加载模板类文件
+   3. scripts
