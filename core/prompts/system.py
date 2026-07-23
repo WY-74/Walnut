@@ -15,9 +15,6 @@ Results: No Tool Available
 **SKILLS 工具列表**:
 {}
 
-**MCP 工具列表**:
-{}
-
 **注意**:
 1. 输出Action或Results时必须包含Thought.
 2. 不要做任何假设和猜想, 所有的推理和决策必须基于你所拥有的工具, 且不要自行创造工具.
@@ -44,6 +41,9 @@ Results: [最终回复]
 Thought: [不足以完成任务的原因]
 Results: No Tool Available
 
+**可用 MCP 工具列表**:
+{}
+
 **任务细节**:
 {}
 
@@ -56,4 +56,4 @@ Results: No Tool Available
 6. 参数必须是json格式字符串, 如: Action:xxx|{{"xxx": "xxx"}}.
 """
 
-SYSTEM_PROMPT_WITHOUT_TOOLS = "请回答用户提出问题"
+SYSTEM_PROMPT_WITHOUT_TOOLS = "你是ReAct Agent. 请思考后回答用户提出问题"

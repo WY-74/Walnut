@@ -8,36 +8,31 @@ mcp = FastMCP("Lixinger")
 
 
 @mcp.tool(meta={"version": "1.0.0"})
-def fundamental(date: str) -> str:
-    """获取指数基本面数据, 需要日期作为参数: date, 格式: {"date": "YYYY-MM-DD"}"""
-    # logger.info(f"Params: data={date}")
+def fundamental(stockcode: str, date: str) -> str:
+    """获取指数基本面数据, 需要如下参数:
+    stockcode: 待查讯指数的唯一代码, 格式: "xxx"
+    date: 查询日期, 格式: "YYYY-MM-DD"
+    """
     response = requests.post(
         url="https://open.lixinger.com/api/hk/index/fundamental",
         json={
             "token": os.environ.get('LIXINGER_TOKEN'),
             "date": date,
-            "stockCodes": ["HSTECH"],
+            "stockCodes": [stockcode],
             "metricsList": [
                 "pe_ttm.y5.mcw.cvpos",
             ],
         },
     )
-    # logger.info(f"Result: {response.json()}")
 
     return json.dumps(response.json(), ensure_ascii=False, separators=(",", ":"))
 
 
 @mcp.tool(meta={"version": "1.0.0"})
-def get_date() -> str:
-    """获取当前日期(YYYY-MM-DD), 无参数"""
-    result = {"date": datetime.now().strftime('%Y-%m-%d')}
-    # logger.info(f"Result: {result}")
-    return json.dumps(result, ensure_ascii=False, separators=(",", ":"))
-
-
-@mcp.tool(meta={"version": "1.0.0"})
-def get_hk_stockcodes(name: str) -> str:
-    """获取指数名对应的stockcode, 需要指数名称作为参数: name, 格式: {"name": "xxx"}"""
+def get_hk_stockcode(name: str) -> str:
+    """获取指数对应的唯一代码(stockcode), 需要如下参数:
+    name: 指数名称, 格式: "xxx"
+    """
     response = requests.post(
         url="https://open.lixinger.com/api/hk/index",
         json={"token": os.environ.get('LIXINGER_TOKEN')},

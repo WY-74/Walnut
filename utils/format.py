@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
@@ -14,6 +14,7 @@ class SkillServerSpec:
     skill_name: str
     skill_path: str
     skill_description: str = ""
+    skill_need_tools: list[str] = field(default_factory=list)  # mcp_server_name
 
 
 @dataclass(frozen=True)

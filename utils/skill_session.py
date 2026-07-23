@@ -2,7 +2,7 @@ from typing import Any, List, Dict
 from pathlib import Path
 from mcp.types import CallToolResult, TextContent
 
-from prompts.system import SKILL_SYSTEM_PROMPT
+from core.prompts.system import SKILL_SYSTEM_PROMPT
 from utils.format import SkillServerSpec
 from utils.settings import load_settings
 
