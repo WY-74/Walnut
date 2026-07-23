@@ -51,17 +51,15 @@ class RunTime:
         if "Action:" not in response:
             return None
 
-        tool_name, raw_arguments = response.split("Action:", 1)[1].split("|", 1)
-        return tool_name.strip(), raw_arguments.strip()
+        try:
+            tool_name, raw_arguments = response.split("Action:", 1)[1].split("|", 1)
+            return tool_name.strip(), raw_arguments.strip()
+        except ValueError:
+            logger.info(f"Failed to parse action from response: {response}")
+            return None
 
     async def run_without_tools(self, message, llm: LLM):
         while True:
             network = input("未命中任何工具, 是否使用网络查讯作为参考? (y/n): ")
             if network.lower() == "y":
                 return await llm.response_context(message)
-
-
-if __name__ == "__main__":
-    runtime = RunTime()
-    question = input("请输入问题或想要完成的任务, 输入 'exit' 退出: ")
-    runtime.run_loop(question)

@@ -13,18 +13,18 @@ from core.agent.runtime import RunTime
 logger = configure_logging("main")
 
 
-async def main():
+async def main(runtime_loops: int = 5):
     settings = load_settings()
     logger.info(f"Loaded settings: {settings}")
 
     llm = LLM()
-    runner = RunTime(max_loops=5)
+    runner = RunTime(max_loops=runtime_loops)
     tool_manager = ToolManager()
 
     main_message = Message()
 
     skill_agent = SkillAgent(llm=llm)
-    main_agent = MainAgent(llm=llm, skill_agent=skill_agent)
+    main_agent = MainAgent(llm=llm, sub_agent=skill_agent)
 
     async with tool_manager.lifespan(settings):
         while True:
@@ -41,7 +41,8 @@ async def main():
 
 
 if __name__ == "__main__":
-    history = asyncio.run(main())
+    runtime_loops = 10
+    history = asyncio.run(main(runtime_loops))
 
     with open(".history.json", "w", encoding="utf-8") as f:
         json.dump(history, f, indent=4, ensure_ascii=False)

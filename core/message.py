@@ -15,9 +15,9 @@ class Message:
     def reset_context(self):
         self.context = []
 
-    def init_main_message(self, valid_skills: List[ToolSpec] | None = None) -> None:
+    def init_main_message(self, tools: List[ToolSpec] | None = None) -> None:
         """初始化 MainAgent 对话消息"""
-        skills = valid_skills or []
+        skills = tools or []
         skill_lines = [f"- {skill.server_name}.{skill.tool_name}: {skill.tool_description}" for skill in skills]
 
         content = SYSTEM_PROMPT.format('\n'.join(skill_lines))
@@ -27,10 +27,10 @@ class Message:
 
         logger.info(f"Initialized MainAgent message: {content}")
 
-    def init_skill_message(self, valid_mcp_tools: List[ToolSpec] | None = None, skill_detail: str = "") -> None:
+    def init_skill_message(self, tools: List[ToolSpec] | None = None, skill_detail: str = "") -> None:
         """初始化 SkillAgent 对话消息"""
-        tools = valid_mcp_tools or []
-        tool_lines = [f"- {tool.server_name}.{tool.tool_name}: {tool.tool_description}" for tool in tools]
+        mcp_tools = tools or []
+        tool_lines = [f"- {tool.server_name}.{tool.tool_name}: {tool.tool_description}" for tool in mcp_tools]
 
         content = SKILL_SYSTEM_PROMPT.format('\n'.join(tool_lines), skill_detail)
 

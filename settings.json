@@ -1,5 +1,9 @@
 {
     "mcpServers": {
+        "norm": {
+            "command": "D:/projects/Walnut/walnut/Scripts/python.exe",
+            "args": [".agents/mcp_tools/norm.py"]
+        },
         "lixinger": {
             "command": "D:/projects/Walnut/walnut/Scripts/python.exe",
             "args": [".agents/mcp_tools/lixinger.py"],
@@ -18,7 +22,11 @@
     "skills": {
         "lixinger": {
             "dir": ".agents/skills/lixinger",
-            "need_tools": ["lixinger"]
+            "need_tools": ["norm", "lixinger"]
+        },
+        "note": {
+            "dir": ".agents/skills/note",
+            "need_tools": ["notion"]
         }
     }
 }
