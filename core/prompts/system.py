@@ -22,8 +22,7 @@ Results: No Tool Available
 4. 如果工具有参数传入则需要在Thought中核对参数名.
 5. 如果工具不需要参数, 则参数部分可以省略 (如: Action:xxx|).
 6. 注意'|'不要被丢掉, 即便没有参数也要存在.
-7. SKILLS工具永远不需要参数.
-8. 参数必须是json格式字符串, 如: Action:xxx|{{"xxx": "xxx"}}.
+7. 参数必须是json格式字符串, 例如: Action:xxx|{{"xxx": "xxx"}}.
 """
 
 

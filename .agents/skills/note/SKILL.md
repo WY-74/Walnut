@@ -1,6 +1,6 @@
 ---
 name: note
-description: 记录某些内容到指定notion页面。当用户要求记录信息时使用。
+description: 记录内容到指定notion页面，当用户主动要求记录信息时使用该skill。需将要记录的内容作为参数(参数格式为 `{"text" "xxx"}`)
 ---
 
 ## 执行流程

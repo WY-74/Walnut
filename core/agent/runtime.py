@@ -13,7 +13,7 @@ class RunTime:
     def __init__(self, max_loops: int = 5):
         self.max_loops = max_loops
 
-    async def run(self, message: Message, llm: LLM, action_handler: ActionHandler) -> str:
+    async def run(self, message: Message, llm: LLM, action_handler: ActionHandler) -> tuple[str, int]:
         logger.info(f"Starting runtime loop")
 
         for i in range(self.max_loops):
@@ -25,7 +25,7 @@ class RunTime:
 
             result = self._parse_result(response)
             if result is not None:
-                return result
+                return result, 1  # Return result with status code 1 for success
 
             action = self._parse_action(response)
             if action is None:
@@ -40,7 +40,7 @@ class RunTime:
 
             message.add_message("user", f"Observation: {observation}")
 
-        return "[任务步数不足]很遗憾未能完成任务!"
+        return "[任务步数不足]很遗憾未能完成任务!", 0  # Return status code 0 for failure
 
     def _parse_result(self, response: str) -> str | None:
         if "Results:" not in response:

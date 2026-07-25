@@ -1,15 +1,20 @@
+from typing import Callable
+
 from core.llm import LLM
 from core.message import Message
 from core.tool_manager import ToolManager
 from core.agent.runtime import RunTime
+from utils.sqlite_store import SQLiteStore
 from utils.logging_setup import configure_logging
 
 logger = configure_logging("SkillAgent")
 
 
-class SkillAgent:
-    def __init__(self, llm: LLM):
+class ToolCallAgent:
+    def __init__(self, llm: LLM, sub_agent: Callable = None, progress_store: SQLiteStore | None = None):
         self.llm = llm
+        self.sub_agent = sub_agent
+        self.progress_store = progress_store
 
     async def run(
         self, query: str, runner: RunTime, message: Message, tool_manager: ToolManager, skill_name: str, *args, **kwargs

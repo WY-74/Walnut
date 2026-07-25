@@ -15,6 +15,7 @@
 
 
 ## TODO:
-   1. references/ skill需可以加载文件, 启用subagent
+   1. references/ skill需可以加载文件
    2. assets/, 加载模板类文件
    3. scripts
+   4. 降级

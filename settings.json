@@ -21,12 +21,17 @@
     },
     "skills": {
         "lixinger": {
-            "dir": ".agents/skills/lixinger",
+            "skill_path": ".agents/skills/lixinger",
             "need_tools": ["norm", "lixinger"]
         },
         "note": {
-            "dir": ".agents/skills/note",
+            "skill_path": ".agents/skills/note",
             "need_tools": ["notion"]
         }
-    }
+    },
+    "progress": {
+        "sqlite_path": "logs/progress.db",
+        "max_chars": 1024
+    },
+    "max_loops": 6
 }

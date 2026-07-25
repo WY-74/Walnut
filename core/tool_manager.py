@@ -37,7 +37,9 @@ class ToolManager:
         skills_specs: list[SkillServerSpec] = []
         for name, cfg in skills.items():
             skills_specs.append(
-                SkillServerSpec(skill_name=name, skill_path=cfg["dir"], skill_need_tools=cfg.get("need_tools", []))
+                SkillServerSpec(
+                    skill_name=name, skill_path=cfg["skill_path"], skill_need_tools=cfg.get("need_tools", [])
+                )
             )
 
         logger.info(f"Loaded MCP server specs: {mcp_servers_specs}")
@@ -114,7 +116,7 @@ class ToolManager:
 
         parts = data.split("---", 2)
 
-        description = parts[1].split(":")[-1].strip()
+        description = parts[1].split(":", 2)[-1].strip()
         body = parts[-1].strip()
 
         return description, body

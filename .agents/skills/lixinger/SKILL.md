@@ -1,6 +1,6 @@
 ---
 name: lixinger
-description: 查讯某日某个指数基本面信息。当用户要求查讯xxx日xxx基本面信息时使用
+description: 查讯某日某个指数基本面信息，当用户要求查讯xxx日xxx基本面信息时使用。该skill无需参数。
 ---
 
 ## 执行流程
