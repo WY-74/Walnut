@@ -29,9 +29,7 @@
             "need_tools": ["notion"]
         }
     },
-    "progress": {
-        "sqlite_path": "logs/progress.db",
-        "max_chars": 1024
-    },
-    "max_loops": 6
+    "model": "KIMI-k3",
+    "runtime_max_loops": 6,
+    "sqlite_path": "logs/progress.db"
 }

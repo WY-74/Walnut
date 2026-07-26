@@ -1,4 +1,3 @@
-import json
 import asyncio
 
 from utils.settings import load_settings
@@ -15,23 +14,20 @@ logger = configure_logging("main")
 
 
 def init_walunt(settings: dict) -> None:
-    llm = LLM()
-    runner = RunTime(max_loops=settings.get("max_loops", 6))
+    llm = LLM(settings["model"])
 
+    runner = RunTime(max_loops=settings.get("runtime_max_loops", 6))
     tool_manager = ToolManager()
     message = Message()
 
-    progress_cfg = settings.get("progress", {})
-    progress_store = SQLiteStore(
-        db_path=progress_cfg.get("sqlite_path", "logs/progress.db"), max_chars=progress_cfg.get("max_chars", 1024)
-    )
+    progress_store = SQLiteStore(db_path=settings.get("sqlite_path", "logs/progress.db"))
 
     settings = {"mcpServers": settings.get("mcpServers", {}), "skills": settings.get("skills", {})}
 
     return llm, runner, tool_manager, message, progress_store, settings
 
 
-async def main(runtime_loops: int = 5):
+async def main():
     settings = load_settings()
     logger.info(f"Loaded raw settings: {settings}")
 
@@ -61,8 +57,4 @@ async def main(runtime_loops: int = 5):
 
 
 if __name__ == "__main__":
-    runtime_loops = 10
-    asyncio.run(main(runtime_loops))
-
-    # with open(".history.json", "w", encoding="utf-8") as f:
-    #     json.dump(context, f, indent=4, ensure_ascii=False)
+    asyncio.run(main())

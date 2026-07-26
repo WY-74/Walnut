@@ -35,6 +35,7 @@ class MainAgent:
                 runner=runner,
                 message=skill_message,
                 tool_manager=tool_manager,
+                run_id=run_id,
                 skill_name=skill_name,
             )
 
