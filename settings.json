@@ -21,12 +21,15 @@
     },
     "skills": {
         "lixinger": {
-            "dir": ".agents/skills/lixinger",
+            "skill_path": ".agents/skills/lixinger",
             "need_tools": ["norm", "lixinger"]
         },
         "note": {
-            "dir": ".agents/skills/note",
+            "skill_path": ".agents/skills/note",
             "need_tools": ["notion"]
         }
-    }
+    },
+    "model": "KIMI-k3",
+    "runtime_max_loops": 6,
+    "sqlite_path": "logs/progress.db"
 }

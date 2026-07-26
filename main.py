@@ -1,4 +1,3 @@
-import json
 import asyncio
 
 from utils.settings import load_settings
@@ -7,42 +6,55 @@ from core.llm import LLM
 from core.message import Message
 from core.tool_manager import ToolManager
 from core.agent.main_agent import MainAgent
-from core.agent.skill_agent import SkillAgent
+from core.agent.toolcall_agent import ToolCallAgent
 from core.agent.runtime import RunTime
+from utils.sqlite_store import SQLiteStore
 
 logger = configure_logging("main")
 
 
-async def main(runtime_loops: int = 5):
-    settings = load_settings()
-    logger.info(f"Loaded settings: {settings}")
+def init_walunt(settings: dict) -> None:
+    llm = LLM(settings["model"])
 
-    llm = LLM()
-    runner = RunTime(max_loops=runtime_loops)
+    runner = RunTime(max_loops=settings.get("runtime_max_loops", 6))
     tool_manager = ToolManager()
+    message = Message()
 
-    main_message = Message()
+    progress_store = SQLiteStore(db_path=settings.get("sqlite_path", "logs/progress.db"))
 
-    skill_agent = SkillAgent(llm=llm)
-    main_agent = MainAgent(llm=llm, sub_agent=skill_agent)
+    settings = {"mcpServers": settings.get("mcpServers", {}), "skills": settings.get("skills", {})}
+
+    return llm, runner, tool_manager, message, progress_store, settings
+
+
+async def main():
+    settings = load_settings()
+    logger.info(f"Loaded raw settings: {settings}")
+
+    llm, runner, tool_manager, message, progress_store, settings = init_walunt(settings)
+
+    toolcall_agent = ToolCallAgent(llm=llm, progress_store=progress_store)
+    main_agent = MainAgent(llm=llm, sub_agent=toolcall_agent, progress_store=progress_store)
 
     async with tool_manager.lifespan(settings):
         while True:
             query = input("请输入问题或想要完成的任务, 输入 'exit' 退出: ")
-
             if query.lower() == "exit":
-                print("Bye!")
+                print("RBOOT: Bye!")
                 break
 
-            result = await main_agent.run(query=query, runner=runner, message=main_message, tool_manager=tool_manager)
-            print(f"RBOOT: {result}")
+            run_id = progress_store.start_run(query)
 
-        return main_message.history
+            try:
+                result, status_code = await main_agent.run(
+                    query=query, runner=runner, message=message, tool_manager=tool_manager, run_id=run_id
+                )
+                progress_store.finish_run(run_id, status_code)
+                print(f"RBOOT: {result}")
+            except Exception as e:
+                progress_store.finish_run(run_id, 0)
+                raise e
 
 
 if __name__ == "__main__":
-    runtime_loops = 10
-    history = asyncio.run(main(runtime_loops))
-
-    with open(".history.json", "w", encoding="utf-8") as f:
-        json.dump(history, f, indent=4, ensure_ascii=False)
+    asyncio.run(main())

@@ -10,7 +10,6 @@ logger = configure_logging("message")
 class Message:
     def __init__(self):
         self.context: list[dict[str, str]] = []  # 当前对话记录
-        self.history: list[dict[str, str]] = []  # 留存完整对话记录
 
     def reset_context(self):
         self.context = []
@@ -23,8 +22,6 @@ class Message:
         content = SYSTEM_PROMPT.format('\n'.join(skill_lines))
 
         self.context.append({"role": "system", "content": content})
-        self.history.append({"role": "system", "content": content})
-
         logger.info(f"Initialized MainAgent message: {content}")
 
     def init_skill_message(self, tools: List[ToolSpec] | None = None, skill_detail: str = "") -> None:
@@ -35,7 +32,7 @@ class Message:
         content = SKILL_SYSTEM_PROMPT.format('\n'.join(tool_lines), skill_detail)
 
         self.context.append({"role": "system", "content": content})
-        self.history.append({"role": "system", "content": content})
+        # self.history.append({"role": "system", "content": content})
 
         logger.info(f"Initialized SkillAgent message: {content}")
 
@@ -44,4 +41,4 @@ class Message:
         添加对话消息到context和history
         """
         self.context.append({"role": role, "content": content})
-        self.history.append({"role": role, "content": content})
+        # self.history.append({"role": role, "content": content})
