@@ -32,7 +32,6 @@ class Message:
         content = SKILL_SYSTEM_PROMPT.format('\n'.join(tool_lines), skill_detail)
 
         self.context.append({"role": "system", "content": content})
-        # self.history.append({"role": "system", "content": content})
 
         logger.info(f"Initialized SkillAgent message: {content}")
 
@@ -41,4 +40,3 @@ class Message:
         添加对话消息到context和history
         """
         self.context.append({"role": role, "content": content})
-        # self.history.append({"role": role, "content": content})

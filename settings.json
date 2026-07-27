@@ -30,6 +30,6 @@
         }
     },
     "model": "KIMI-k3",
-    "runtime_max_loops": 6,
+    "runtime_max_loops": 10,
     "sqlite_path": "logs/progress.db"
 }

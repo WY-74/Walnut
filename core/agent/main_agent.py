@@ -22,7 +22,12 @@ class MainAgent:
             message.init_main_message(tools=tool_manager.list_skills())
         message.add_message("user", query)
 
-        async def handle_action(tool_name: str, raw_arguments: str):
+        async def handle_action(action: dict):
+            try:
+                tool_name, raw_arguments = action["ToolCall"].split("|", 1)
+            except Exception as e:
+                return None
+
             if not tool_name.startswith("skill."):
                 return None
 

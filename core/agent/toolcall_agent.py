@@ -1,4 +1,5 @@
 from typing import Callable
+from pathlib import Path
 
 from core.llm import LLM
 from core.message import Message
@@ -47,11 +48,32 @@ class ToolCallAgent:
         message.init_skill_message(available_tools, skill_detail)
         message.add_message("user", query)
 
-        async def handle_action(tool_name: str, raw_arguments: str, extra: str | None = None):
-            return await tool_manager.call_mcp_tool(tool_name, raw_arguments)
+        async def handle_action(action: dict):
+            try:
+                if action.get("Assets"):
+                    assets = self._parse_assets(Path(skill.skill_path), action["Assets"])
+                    return assets
+                else:
+                    tool_name, raw_arguments = action["ToolCall"].split("|", 1)
+                    return await tool_manager.call_mcp_tool(tool_name.strip(), raw_arguments.strip())
+            except KeyError:
+                logger.info(f"Action does not contain 'Assets' key: {action}")
+                return None
 
         result, status_code = await runner.run(message, self.llm, handle_action)
         self.progress_store.finish_node(
             run_id=run_id, node=self.node_name, final_context=result, status_code=status_code
         )
         return result, status_code
+
+    def _parse_assets(self, root: Path, assets: list[str]) -> str:
+        result = ""
+        try:
+            for asset in assets:
+                with open(root / asset, "r", encoding="utf-8") as f:
+                    content = f.read()
+                result += f"[Asset: {asset}]\n{content}\n"
+        except Exception as e:
+            logger.error(f"Failed to read asset {asset}: {e}")
+            return None
+        return result
