@@ -1,4 +1,5 @@
 import os
+import json
 
 from openai import OpenAI
 from utils.logging_setup import configure_logging
@@ -25,4 +26,11 @@ class LLM:
             reasoning_effort="high",
             extra_body={"thinking": {"type": "enabled"}},
         )
-        return response.choices[0].message.content
+        return self.parse_response(response.choices[0].message.content)
+
+    def parse_response(self, response: str) -> dict:
+        try:
+            response = json.loads(response)
+        except json.JSONDecodeError:
+            pass
+        return response
