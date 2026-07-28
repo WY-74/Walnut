@@ -48,7 +48,7 @@ class MainAgent:
         self.progress_store.finish_node(
             run_id=run_id, node=self.node_name, final_context=result, status_code=status_code
         )
-        return result, status_code
+        return result
 
     def _build_skill_prompt(self, query, raw_arguments: str) -> str:
         if raw_arguments:
