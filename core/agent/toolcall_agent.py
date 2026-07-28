@@ -64,7 +64,7 @@ class ToolCallAgent:
         self.progress_store.finish_node(
             run_id=run_id, node=self.node_name, final_context=result, status_code=status_code
         )
-        return result, status_code
+        return result
 
     def _parse_assets(self, root: Path, assets: list[str]) -> str:
         result = ""

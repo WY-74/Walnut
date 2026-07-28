@@ -16,7 +16,7 @@ logger = configure_logging("main")
 def init_walunt(settings: dict) -> None:
     llm = LLM(settings["model"])
 
-    runner = RunTime(max_loops=settings.get("runtime_max_loops", 6))
+    runner = RunTime(max_loops=settings.get("runtime_max_loops", 5))
     tool_manager = ToolManager()
     message = Message()
 
@@ -40,16 +40,17 @@ async def main():
         while True:
             query = input("请输入问题或想要完成的任务, 输入 'exit' 退出: ")
             if query.lower() == "exit":
-                print("RBOOT: Bye!")
+                print("RBOOT: Bye!\n")
                 break
 
             run_id = progress_store.start_run(query)
 
             try:
-                result, status_code = await main_agent.run(
+                result = await main_agent.run(
                     query=query, runner=runner, message=message, tool_manager=tool_manager, run_id=run_id
                 )
-                progress_store.finish_run(run_id, status_code)
+
+                progress_store.finish_run(run_id)
                 print(f"RBOOT: {result}")
             except Exception as e:
                 progress_store.finish_run(run_id, 0)

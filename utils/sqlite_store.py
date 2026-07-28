@@ -60,19 +60,37 @@ class SQLiteStore:
         with self._lock, self._connect() as conn:
             conn.execute(
                 "INSERT INTO tasks(run_id, query, created_at) VALUES (?, ?, ?)",
-                (run_id, query, now),
+                [run_id, query, now],
             )
         logger.info(f"Started new run with ID: {run_id} for query: {query}")
         return run_id
 
-    def finish_run(self, run_id: str, status_code: int) -> None:
+    def finish_run(self, run_id: str, status_code: int | None = None) -> None:
         now = self._now_iso()
+
+        if status_code is None:
+            with self._lock, self._connect() as conn:
+                cur = conn.execute(
+                    """
+                            SELECT
+                                CASE
+                                    WHEN COUNT(*) = 0 THEN 0
+                                    WHEN SUM(CASE WHEN successful = 1 THEN 1 ELSE 0 END) = COUNT(*) THEN 1
+                                    ELSE 0
+                                END AS all_successful
+                            FROM progress
+                            WHERE run_id = ?
+                            """,
+                    [run_id],
+                ).fetchone()
+            status_code = 1 if cur["all_successful"] == 1 else 0
+
         with self._lock, self._connect() as conn:
             conn.execute(
                 """
                 UPDATE tasks SET finished_at = ?, successful = ? WHERE run_id = ?
                 """,
-                (now, status_code, run_id),
+                [now, status_code, run_id],
             )
 
     def start_node(self, run_id: str, node: str) -> int:
@@ -83,7 +101,7 @@ class SQLiteStore:
                 INSERT INTO progress(run_id, node, created_at)
                 VALUES (?, ?, ?)
                 """,
-                (run_id, node, now),
+                [run_id, node, now],
             )
             return int(cur.lastrowid)
 
@@ -94,7 +112,7 @@ class SQLiteStore:
                 """
                 UPDATE progress
                 SET finished_at = ?, final_context = ?, successful = ?
-                WHERE run_id = ? AND node = ?
+                WHERE id = (SELECT id FROM progress WHERE run_id = ? AND node =? ORDER BY id DESC LIMIT 1)
                 """,
-                (now, final_context, status_code, run_id, node),
+                [now, final_context, status_code, run_id, node],
             )
