@@ -9,25 +9,31 @@ from core.agent.main_agent import MainAgent
 from core.agent.toolcall_agent import ToolCallAgent
 from core.agent.runtime import RunTime
 from utils.sqlite_store import SQLiteStore
+from utils.tui import run_cli, show_boot_screen, ask_query, show_bye, show_result, show_error
 
 logger = configure_logging("main")
 
 
 def init_walunt(settings: dict) -> None:
     llm = LLM(settings["model"])
-
     runner = RunTime(max_loops=settings.get("runtime_max_loops", 5))
+
     tool_manager = ToolManager()
     message = Message()
-
     progress_store = SQLiteStore(db_path=settings.get("sqlite_path", "logs/progress.db"))
 
-    settings = {"mcpServers": settings.get("mcpServers", {}), "skills": settings.get("skills", {})}
+    show_boot_screen(version=settings.get("version", ""), model=settings.get("model", ""))
+    return (
+        llm,
+        runner,
+        tool_manager,
+        message,
+        progress_store,
+        {"mcpServers": settings.get("mcpServers", {}), "skills": settings.get("skills", {})},
+    )
 
-    return llm, runner, tool_manager, message, progress_store, settings
 
-
-async def main():
+async def _start_server() -> None:
     settings = load_settings()
     logger.info(f"Loaded raw settings: {settings}")
 
@@ -38,9 +44,17 @@ async def main():
 
     async with tool_manager.lifespan(settings):
         while True:
-            query = input("请输入问题或想要完成的任务, 输入 'exit' 退出: ")
+            try:
+                query = ask_query()
+            except (KeyboardInterrupt, EOFError):
+                show_bye()
+                break
+
+            if not query:
+                continue
+
             if query.lower() == "exit":
-                print("RBOOT: Bye!\n")
+                show_bye()
                 break
 
             run_id = progress_store.start_run(query)
@@ -51,11 +65,19 @@ async def main():
                 )
 
                 progress_store.finish_run(run_id)
-                print(f"RBOOT: {result}")
+                show_result(result)
             except Exception as e:
                 progress_store.finish_run(run_id, 0)
-                raise e
+                show_error(e)
+                raise
+
+
+def main():
+    def _wapper():
+        asyncio.run(_start_server())
+
+    run_cli(_wapper)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
