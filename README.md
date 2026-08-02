@@ -1,10 +1,12 @@
-# Walnut
+<div align="center"> <img src="https://capsule-render.vercel.app/api?type=venom&height=180&text=WALNUT&fontSize=56&color=0:6B4226,100:C68642&stroke=2E1A0F&fontColor=FFF8EE&animation=fadeIn" alt="WALNUT logo" /> </div>
+
+## Overview
 
 ## Configure settings.json
 - mcpServers
     - mcp server name
         - command: string
-        - agrs: list
+        - args: list
         - envs(optional): dict
 - skills
     - skill name

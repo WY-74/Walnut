@@ -29,7 +29,8 @@
             "need_tools": ["notion"]
         }
     },
-    "model": "KIMI-k3",
+    "version": "dev",
+    "model": "deepseek-v4-pro",
     "runtime_max_loops": 10,
     "sqlite_path": "logs/progress.db"
 }
