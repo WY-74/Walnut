@@ -2,7 +2,7 @@ from typing import Any, Awaitable, Callable
 
 from core.llm import LLM
 from core.message import Message
-from core.message import LLM_RESPONSE_JSON_ERROR, PARSE_ACTION_ERROR, ACTION_HANDLER_ERROR
+from core.prompts.error import PARSE_LLM_RESPONSE_ERROR, ACTION_HANDLER_ERROR
 from utils.logging_setup import configure_logging
 
 logger = configure_logging("runtime")
@@ -21,21 +21,15 @@ class RunTime:
             logger.info(f"RunTime loop: {i + 1}")
 
             response = await llm.response_context(message.context)
-            logger.info(f"LLM response: {response}")
             message.add_message("assistant", str(response))
-
-            if isinstance(response, str):
-                message.add_message("user", LLM_RESPONSE_JSON_ERROR)
+            if response.get("Available") is False:
+                message.add_message("user", PARSE_LLM_RESPONSE_ERROR)
                 continue
 
             if response["Results"] is not None:
                 return response["Results"], 1
 
             action = self._parse_action(response)
-            if action is None:
-                message.add_message("user", PARSE_ACTION_ERROR)
-                continue
-
             observation = await action_handler(action)
             if observation is None:
                 message.add_message("user", ACTION_HANDLER_ERROR)

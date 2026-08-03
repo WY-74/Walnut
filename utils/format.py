@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from pydantic import BaseModel
 
 
 @dataclass(frozen=True)
@@ -22,3 +23,16 @@ class ToolSpec:
     server_name: str
     tool_name: str
     tool_description: str
+
+
+class ActionPayload(BaseModel):
+    ToolCall: str | None = None
+    Assets: list[str] | None = None
+
+
+class LLMResponse(BaseModel):
+    Available: bool = True
+    Thought: str = ""
+    Action: ActionPayload | None = None
+    Results: str | None = None
+    RawErrorResponse: str | None = None
