@@ -24,6 +24,10 @@
             "skill_path": ".agents/skills/lixinger",
             "need_tools": ["norm", "lixinger"]
         },
+        "search_from_sqlite": {
+            "skill_path": ".agents/skills/search_from_sqlite",
+            "need_tools": ["norm"]
+        },
         "note": {
             "skill_path": ".agents/skills/note",
             "need_tools": ["notion"]

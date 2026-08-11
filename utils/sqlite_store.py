@@ -47,11 +47,23 @@ class SQLiteStore:
                     FOREIGN KEY(run_id) REFERENCES tasks(run_id)
                 );
 
+                CREATE TABLE IF NOT EXISTS pe_ttm (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                stock_code TEXT NOT NULL,
+                pe_ttm_x100 INTEGER NOT NULL,
+                date TEXT NOT NULL,
+                CHECK (length("date") = 10 AND date("date") IS NOT NULL),
+                UNIQUE (stock_code, date)
+                );
+
                 CREATE INDEX IF NOT EXISTS idx_runid_id
                 ON progress (run_id, id);
 
                 CREATE INDEX IF NOT EXISTS idx_runid_node_id
                 ON progress(run_id, node, id);
+
+                CREATE INDEX IF NOT EXISTS idx_pe_ttm
+                ON pe_ttm (stock_code, date);
                 """)
 
     def start_run(self, query: str) -> str:
@@ -72,15 +84,15 @@ class SQLiteStore:
             with self._lock, self._connect() as conn:
                 cur = conn.execute(
                     """
-                            SELECT
-                                CASE
-                                    WHEN COUNT(*) = 0 THEN 0
-                                    WHEN SUM(CASE WHEN successful = 1 THEN 1 ELSE 0 END) = COUNT(*) THEN 1
-                                    ELSE 0
-                                END AS all_successful
-                            FROM progress
-                            WHERE run_id = ?
-                            """,
+                        SELECT
+                            CASE
+                                WHEN COUNT(*) = 0 THEN 0
+                                WHEN SUM(CASE WHEN successful = 1 THEN 1 ELSE 0 END) = COUNT(*) THEN 1
+                                ELSE 0
+                            END AS all_successful
+                        FROM progress
+                        WHERE run_id = ?
+                        """,
                     [run_id],
                 ).fetchone()
             status_code = 1 if cur["all_successful"] == 1 else 0
@@ -105,8 +117,9 @@ class SQLiteStore:
             )
             return int(cur.lastrowid)
 
-    def finish_node(self, run_id: str, node: str, final_context: str, status_code: int) -> None:
+    def finish_node(self, run_id: str, node: str, final_context: str | dict, status_code: int) -> None:
         now = self._now_iso()
+        final_context = final_context if isinstance(final_context, str) else str(final_context)
         with self._lock, self._connect() as conn:
             conn.execute(
                 """

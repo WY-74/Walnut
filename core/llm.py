@@ -3,7 +3,7 @@ import json
 
 from openai import OpenAI
 from pydantic import ValidationError
-from utils.format import LLMResponse
+from structure.llm_response import LLMResponse
 from utils.logging_setup import configure_logging
 
 logger = configure_logging("LLM")

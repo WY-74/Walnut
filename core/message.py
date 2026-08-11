@@ -1,6 +1,6 @@
 from typing import List
 
-from core.prompts.system import SYSTEM_PROMPT, SKILL_SYSTEM_PROMPT
+from core.prompts.main_prompt import SKILL_SYSTEM_PROMPT
 from utils.format import ToolSpec
 from utils.logging_setup import configure_logging
 
@@ -13,16 +13,6 @@ class Message:
 
     def reset_context(self):
         self.context = []
-
-    def init_main_message(self, tools: List[ToolSpec] | None = None) -> None:
-        """初始化 MainAgent 对话消息"""
-        skills = tools or []
-        skill_lines = [f"- {skill.server_name}.{skill.tool_name}: {skill.tool_description}" for skill in skills]
-
-        content = SYSTEM_PROMPT.format('\n'.join(skill_lines))
-
-        self.context.append({"role": "system", "content": content})
-        logger.info(f"Initialized MainAgent message: {content}")
 
     def init_skill_message(self, tools: List[ToolSpec] | None = None, skill_detail: str = "") -> None:
         """初始化 SkillAgent 对话消息"""

@@ -8,15 +8,15 @@ from core.agent.runtime import RunTime
 from utils.sqlite_store import SQLiteStore
 from utils.logging_setup import configure_logging
 
-logger = configure_logging("SkillAgent")
+logger = configure_logging("PeTTMAgent")
 
 
-class ToolCallAgent:
+class PeTTMAgent:
     def __init__(self, llm: LLM, sub_agent: Callable = None, progress_store: SQLiteStore | None = None):
         self.llm = llm
         self.sub_agent = sub_agent
         self.progress_store = progress_store
-        self.node_name = "toolcall"
+        self.node_name = "pe_ttm"
 
     async def run(
         self, query: str, runner: RunTime, message: Message, tool_manager: ToolManager, run_id: str, skill_name: str

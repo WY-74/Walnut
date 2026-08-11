@@ -1,20 +1,25 @@
 from typing import Any, Awaitable, Callable
 
+from pydantic import ValidationError
+
 from core.llm import LLM
 from core.message import Message
-from core.prompts.error import PARSE_LLM_RESPONSE_ERROR, ACTION_HANDLER_ERROR
+from core.prompts.error import PARSE_LLM_RESPONSE_ERROR, RESULT_HANDLER_ERROR, ACTION_HANDLER_ERROR
 from utils.logging_setup import configure_logging
 
 logger = configure_logging("runtime")
 
 ActionHandler = Callable[[str, str], Awaitable[Any]]
+ResultHandler = Callable[[str, str], Awaitable[Any]]
 
 
 class RunTime:
     def __init__(self, max_loops: int = 5):
         self.max_loops = max_loops
 
-    async def run(self, message: Message, llm: LLM, action_handler: ActionHandler) -> tuple[str, int]:
+    async def run(
+        self, message: Message, llm: LLM, result_handler: ResultHandler, action_handler: ActionHandler | None = None
+    ) -> tuple[str, int]:
         logger.info(f"Starting runtime loop")
 
         for i in range(self.max_loops):
@@ -27,7 +32,12 @@ class RunTime:
                 continue
 
             if response["Results"] is not None:
-                return response["Results"], 1
+                try:
+                    result = result_handler(response["Results"])
+                    return result, 1
+                except ValidationError:
+                    message.add_message("user", RESULT_HANDLER_ERROR)
+                    continue
 
             action = self._parse_action(response)
             observation = await action_handler(action)

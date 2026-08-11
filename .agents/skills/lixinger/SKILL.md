@@ -1,7 +1,14 @@
 ---
 name: lixinger
-description: 查讯某日某个指数基本面信息，当用户要求查讯xxx日xxx基本面信息时使用。该skill无需参数。
+description: 查讯某日某个指数基本面信息。
+  - Args:
+    - stockcode: 指数代码
+    - date: 日期，格式为YYYY-MM-DD
+  - Return:
+    - pe_ttm.y5.mcw.cvpos: 所查指数在指定日期时的PE-TTM结果
 ---
+
+请严格按照以下流程进行
 
 ## 执行流程
 1. **判断是否有指数名称**: 如果用户提供了指数名称但没有提供stockCodes，那么可以通过 `lixinger.get_hk_stockcodes` 工具获取指数的stockCodes, 然后进行第4步. 
