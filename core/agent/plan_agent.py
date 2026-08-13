@@ -1,5 +1,3 @@
-import json
-
 from core.llm import LLM
 from core.message import Message
 from core.tool_manager import ToolManager
@@ -26,9 +24,9 @@ class PlanAgent:
         message.add_message("user", query)
 
         result, status_code = await runner.run(message, self.llm, result_handler=self.parse_result)
-        if result.get("MissingInfo"):
+        if result.get("Error"):
             status_code = 0
-            logger.warning(f"{result['MissingInfo']}")
+            logger.warning(f"{result}")
         self.progress_store.finish_node(
             run_id=run_id, node=self.node_name, final_context=result, status_code=status_code
         )
@@ -46,6 +44,9 @@ class PlanAgent:
         message.context.append({"role": "system", "content": system_prompt})
         return message
 
-    def parse_result(self, result: str) -> dict:
-        result = Plan.model_validate(result)
-        return result.model_dump()
+    def parse_result(self, result: str | dict) -> dict:
+        if isinstance(result, str):
+            # String will only be returned if the task encounters an error.
+            return Plan(Error=result).model_dump()
+        else:
+            return Plan.model_validate(result).model_dump()

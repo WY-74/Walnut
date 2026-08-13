@@ -14,17 +14,6 @@ class Message:
     def reset_context(self):
         self.context = []
 
-    def init_skill_message(self, tools: List[ToolSpec] | None = None, skill_detail: str = "") -> None:
-        """初始化 SkillAgent 对话消息"""
-        mcp_tools = tools or []
-        tool_lines = [f"- {tool.server_name}.{tool.tool_name}: {tool.tool_description}" for tool in mcp_tools]
-
-        content = SKILL_SYSTEM_PROMPT.format('\n'.join(tool_lines), skill_detail)
-
-        self.context.append({"role": "system", "content": content})
-
-        logger.info(f"Initialized SkillAgent message: {content}")
-
     def add_message(self, role: str, content: str):
         """
         添加对话消息到context和history

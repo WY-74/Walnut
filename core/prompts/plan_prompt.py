@@ -28,7 +28,7 @@ PLAN_SYSTEM_PROMPT = """你是ReAct Agent. 你将分析用户需求并利用工�
 {{
     "Thought": "你的思考过程",
     "Results": {{
-        "MissingInfo": "对缺少信息的描述, 并请求用户输入"
+        "Error": "对缺少信息的描述, 并请求用户输入"
     }}
 }}
 
@@ -38,7 +38,7 @@ PLAN_SYSTEM_PROMPT = """你是ReAct Agent. 你将分析用户需求并利用工�
 3. Tasks: Results的子字段, 列表中每个元素表示一个可执行步骤, 每一个可执行步骤包含具体的动作和所需的工具.
 4. Detail: Tasks的子字段, 对当前可执行步骤的描述, 该字段为必填项.
 5. Tools: Tasks的子字段, 每个元素均是当前可执行步骤需要用到的工具, 如果存在多个工具则表示可以让多个工具并行执行, 如果不需要调用任何工具则为null.
-6. MissingInfo: Results的子字段(仅缺少信息时), 对缺少信息的描述.
+6. Error: Results的子字段(仅缺少信息时), 对缺少信息的描述.
 6. Name: Tools的子字段. 工具名称, 该字段为必填项, 不能为null.
 7. Args: Tools的子字段. 工具参数, 如果需要参数请确保格式为{{"xxx": "xxx"}}, 如果当前不需要调用任何工具则为null.
 

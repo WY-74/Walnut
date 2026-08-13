@@ -1,7 +1,7 @@
 from .main_agent import MainAgent
-from .pe_ttm_agent import PeTTMAgent
+from .skill_agent import SkillAgent
 from .plan_agent import PlanAgent
 from .runtime import RunTime
 from .local_search_agent import LocalSearchAgent
 
-__all__ = ["MainAgent", "PlanAgent", "PeTTMAgent", "LocalSearchAgent", "RunTime"]
+__all__ = ["MainAgent", "PlanAgent", "SkillAgent", "LocalSearchAgent", "RunTime"]

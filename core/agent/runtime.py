@@ -1,5 +1,6 @@
 from typing import Any, Awaitable, Callable
 
+from json import JSONDecodeError
 from pydantic import ValidationError
 
 from core.llm import LLM
@@ -35,8 +36,9 @@ class RunTime:
                 try:
                     result = result_handler(response["Results"])
                     return result, 1
-                except ValidationError:
+                except (ValidationError, JSONDecodeError) as e:
                     message.add_message("user", RESULT_HANDLER_ERROR)
+                    logger.warning(f"Result handler failed: {e}")
                     continue
 
             action = self._parse_action(response)
@@ -47,7 +49,8 @@ class RunTime:
 
             message.add_message("user", f"Observation: {observation}")
 
-        return "[任务步数不足]很遗憾未能完成任务!", 0  # Return status code 0 for failure
+        result = result_handler("[任务步数不足]很遗憾未能完成任务!")
+        return result, 0  # Return status code 0 for failure
 
     def _parse_action(self, response: str) -> tuple[str, str] | None:
         if response["Action"] is None:

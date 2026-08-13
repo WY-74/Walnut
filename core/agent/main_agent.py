@@ -34,47 +34,63 @@ class MainAgent:
                 run_id=run_id,
             )
 
-            if plan.get("MissingInfo"):
+            if plan.get("Error"):
                 status_code = 0
-                missing_info = plan["MissingInfo"]
+                plan_result = plan["Error"]
                 self.progress_store.finish_node(
-                    run_id=run_id, node=self.node_name, final_context=missing_info, status_code=status_code
+                    run_id=run_id, node=self.node_name, final_context=plan_result, status_code=status_code
                 )
-                return missing_info, status_code
+                return plan_result, status_code
 
         if not message.context:
             self.init_message(message=message, tool_manager=tool_manager)
         message.add_message("user", query)
-        for step in plan["Tasks"]:
-            print(step)
+        message.add_message("user", f"Plan: {plan}")
 
-        # TODO: 复现循环死问题
-        # TODO: 处理并行任务
+        # TODO: 我们似乎不需要再main中执行runtime了
+        # TODO: 是否可以通过属性访问, 字典太麻烦
+        for task in plan["Tasks"]:
+            tools = task["Tools"]
+            if len(tools) == 1:
+                tool_name = tools[0]["Name"].split(".", 1)[-1].strip()
+                tool_args = tools[0]["Args"]
+                print(tool_name, tool_args)
+                exit()
+
+                step_result, status_code = await self.skill_agent.run(
+                    query=task["Detail"],
+                    runner=runner,
+                    message=Message(),
+                    tool_manager=tool_manager,
+                    run_id=run_id,
+                    skill_name=tool_name,
+                )
+                message.add_message("user", f"Task: {task['Detail']}\nResult: {step_result}")
+
+                if status_code == 0:
+                    pass
+                    # 处理错误
+
         exit()
 
-        async def handle_action(action: dict):
-            try:
-                tool_name, raw_arguments = action["ToolCall"].split("|", 1)
-            except Exception as e:
-                return None
+        # async def handle_action(action: dict):
+        #     if not tool_name.startswith("skill."):
+        #         return None
 
-            if not tool_name.startswith("skill."):
-                return None
+        #     skill_name = tool_name.split(".", 1)[1].strip()
+        #     skill_message = Message()
+        #     skill_query = self._build_skill_prompt(query, raw_arguments)
 
-            skill_name = tool_name.split(".", 1)[1].strip()
-            skill_message = Message()
-            skill_query = self._build_skill_prompt(query, raw_arguments)
+        #     return await self.sub_agent.run(
+        #         query=skill_query,
+        #         runner=runner,
+        #         message=skill_message,
+        #         tool_manager=tool_manager,
+        #         run_id=run_id,
+        #         skill_name=skill_name,
+        #     )
 
-            return await self.sub_agent.run(
-                query=skill_query,
-                runner=runner,
-                message=skill_message,
-                tool_manager=tool_manager,
-                run_id=run_id,
-                skill_name=skill_name,
-            )
-
-        result, status_code = await runner.run(message=message, llm=self.llm, action_handler=handle_action)
+        # result, status_code = await runner.run(message=message, llm=self.llm, action_handler=handle_action)
         self.progress_store.finish_node(
             run_id=run_id, node=self.node_name, final_context=result, status_code=status_code
         )
@@ -91,6 +107,18 @@ class MainAgent:
         message.reset_context()
         message.context.append({"role": "system", "content": content})
         return message
+
+    # def handle_action(self, tool_name, tool_args):
+    #     tool_name = tool_name.split(".", 1)[-1].strip()
+
+    #     return await self.sub_agent.run(
+    #         query=skill_query,
+    #         runner=runner,
+    #         message=skill_message,
+    #         tool_manager=tool_manager,
+    #         run_id=run_id,
+    #         skill_name=skill_name,
+    #     )
 
     def _init_sub_agents(self, sub_agents: Dict[str, Callable]):
         if not sub_agents:

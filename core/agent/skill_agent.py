@@ -5,13 +5,14 @@ from core.llm import LLM
 from core.message import Message
 from core.tool_manager import ToolManager
 from core.agent.runtime import RunTime
+from core.prompts.skill_prompt import SKILL_SYSTEM_PROMPT
 from utils.sqlite_store import SQLiteStore
 from utils.logging_setup import configure_logging
 
-logger = configure_logging("PeTTMAgent")
+logger = configure_logging("SkillAgent")
 
 
-class PeTTMAgent:
+class SkillAgent:
     def __init__(self, llm: LLM, sub_agent: Callable = None, progress_store: SQLiteStore | None = None):
         self.llm = llm
         self.sub_agent = sub_agent
@@ -28,25 +29,14 @@ class PeTTMAgent:
             result = f"Skill '{skill_name}' not found"
             self.progress_store.finish_node(run_id=run_id, node=self.node_name, final_context=result, status_code=0)
             logger.info(result)
-            return None
+            return None, 0
 
-        skill_detail = tool_manager.get_skill_detail(skill_name)
-        if skill_detail is None:
-            result = f"Skill detail for {skill_name} is None"
-            self.progress_store.finish_node(run_id=run_id, node=self.node_name, final_context=result, status_code=0)
-            logger.info(result)
-            return None
-
-        available_tools = tool_manager.list_mcp_tools_for_skill(skill_name)
-        if available_tools is None:
-            result = f"Available tools for skill {skill_name} is None"
-            self.progress_store.finish_node(run_id=run_id, node=self.node_name, final_context=result, status_code=0)
-            logger.info(result)
-            return None
-
-        message.reset_context()
-        message.init_skill_message(available_tools, skill_detail)
+        message = self.init_message(message=message, tool_manager=tool_manager, skill_name=skill_name)
         message.add_message("user", query)
+
+        # TODO: 完成handle_action
+        # TODO: 统一Agent返回为 result(规范处理, 结构化输出, 想办法让结果可以通过属性调用方式使用，纯字典有点麻烦), status_code
+        # TODO: 异常处理(例如skill找不到)
 
         async def handle_action(action: dict):
             try:
@@ -65,6 +55,21 @@ class PeTTMAgent:
             run_id=run_id, node=self.node_name, final_context=result, status_code=status_code
         )
         return result
+
+    def init_message(self, message: Message, tool_manager: ToolManager, skill_name: str) -> Message:
+        message.reset_context()
+
+        tools = [
+            f"- {tool.server_name}.{tool.tool_name}: {tool.tool_description}"
+            for tool in tool_manager.list_mcp_tools_for_skill(skill_name)
+        ]
+        detail = tool_manager.get_skill_detail(skill_name)
+
+        system_prompt = SKILL_SYSTEM_PROMPT.format(tools='\n'.join(tools), detail=detail)
+
+        message.reset_context()
+        message.context.append({"role": "system", "content": system_prompt})
+        return message
 
     def _parse_assets(self, root: Path, assets: list[str]) -> str:
         result = ""

@@ -34,7 +34,7 @@ class LLM:
 
     def parse_response(self, response: str) -> dict:
         try:
-            response = LLMResponse.model_validate(json.loads(response))
+            response = LLMResponse.model_validate_json(response)
             logger.info(f"Parsed LLM response: {response}")
         except (json.JSONDecodeError, ValidationError):
             logger.warning(f"Failed to parse LLM response: {response}")

@@ -5,7 +5,7 @@ from utils.logging_setup import configure_logging
 from core.llm import LLM
 from core.message import Message
 from core.tool_manager import ToolManager
-from core.agent import MainAgent, PlanAgent, PeTTMAgent, LocalSearchAgent, RunTime
+from core.agent import MainAgent, PlanAgent, SkillAgent, LocalSearchAgent, RunTime
 from utils.sqlite_store import SQLiteStore
 from utils.tui import run_cli, show_boot_screen, ask_query, show_bye, show_result, show_error
 
@@ -37,14 +37,14 @@ async def _start_server() -> None:
 
     llm, runner, tool_manager, message, progress_store, settings = init_walunt(settings)
 
-    pe_ttm_agent = PeTTMAgent(llm=llm, progress_store=progress_store)
-    local_search_agent = LocalSearchAgent(llm=llm, progress_store=progress_store)
     plan_agent = PlanAgent(llm=llm, progress_store=progress_store)
+    skill_agent = SkillAgent(llm=llm, progress_store=progress_store)
+    local_search_agent = LocalSearchAgent(llm=llm, progress_store=progress_store)
     main_agent = MainAgent(
         llm=llm,
         progress_store=progress_store,
         plan_agent=plan_agent,
-        pe_ttm_agent=pe_ttm_agent,
+        skill_agent=skill_agent,
         local_search_agent=local_search_agent,
     )
 

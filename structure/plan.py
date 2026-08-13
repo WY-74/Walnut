@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 class Tool(BaseModel):
     Name: str
-    Args: str | None = None
+    Args: dict | None = None
 
 
 class Task(BaseModel):
@@ -13,4 +13,4 @@ class Task(BaseModel):
 
 class Plan(BaseModel):
     Tasks: list[Task] | None = None
-    MissingInfo: str | None = None
+    Error: str | None = None
