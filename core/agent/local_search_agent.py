@@ -5,14 +5,14 @@ from core.llm import LLM
 from core.message import Message
 from core.tool_manager import ToolManager
 from core.agent.runtime import RunTime
+from core.agent import BaseAgent
 from utils.sqlite_store import SQLiteStore
 from utils.logging_setup import configure_logging
 
 logger = configure_logging("LocalSearchAgent")
 
 
-class LocalSearchAgent:
-    def __init__(self, llm: LLM, progress_store: SQLiteStore | None = None):
-        self.llm = llm
-        self.progress_store = progress_store
+class LocalSearchAgent(BaseAgent):
+    def __init__(self, llm: LLM, progress_store: SQLiteStore | None = None, **sub_agents):
+        super().__init__(llm=llm, progress_store=progress_store, sub_agent=sub_agents)
         self.node_name = "local_search"

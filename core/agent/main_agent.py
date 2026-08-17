@@ -3,24 +3,22 @@ from typing import Callable, Dict
 from core.llm import LLM
 from core.message import Message
 from core.tool_manager import ToolManager
+from core.agent import BaseAgent
 from core.agent.runtime import RunTime
 from core.prompts.main_prompt import MAIN_SYSTEM_PROMPT
 from structure.plan import Plan
-from structure.llm_response import ActionPayload
 from utils.sqlite_store import SQLiteStore
 from utils.logging_setup import configure_logging
 
 logger = configure_logging("MainAgent")
 
 
-class MainAgent:
+class MainAgent(BaseAgent):
     def __init__(self, llm: LLM, progress_store: SQLiteStore | None = None, **sub_agents):
-        self.llm = llm
-        self.progress_store = progress_store
+        super().__init__(llm=llm, progress_store=progress_store, sub_agent=sub_agents)
         self.node_name = "main"
-        self._init_sub_agents(sub_agents)
 
-    async def run(self, query: str, runner: RunTime, message: Message, tool_manager: ToolManager, run_id: str) -> str:
+    async def run(self, query: str, runner: RunTime, message: Message, tool_manager: ToolManager, run_id: str):
         """Run the MainAgent."""
         plan: Plan
         self.progress_store.start_node(run_id=run_id, node=self.node_name)
@@ -94,38 +92,6 @@ class MainAgent:
         message.reset_context()
         message.context.append({"role": "system", "content": content})
         return message
-
-    # async def handle_action(self, query: str, runner: RunTime, tool_manager: ToolManager, run_id: str):
-    #     #TODO: 之后在此函数内设计并行
-    #     async def handler(action: ActionPayload):
-    #         if len(action.tool_call) > 1:
-    #             pass
-    #         else:
-    #             tool = action.tool_call[0].name
-    #             args = action.tool_call[0].args
-    #             query = self._build_skill_prompt(query, args)
-
-    #             return await self.skill_agent.run(
-    #                 query=query,
-    #                 runner=runner,
-    #                 message=Message(),
-    #                 tool_manager=tool_manager,
-    #                 run_id=run_id,
-    #                 skill_name=tool,
-    #             )
-
-    #     return handler
-
-    def parse_result(self, result: str) -> dict:
-        return result
-
-    def _init_sub_agents(self, sub_agents: Dict[str, Callable]):
-        if not sub_agents:
-            logger.warning("No sub-agents provided to MainAgent.")
-            return
-
-        for key, value in sub_agents.items():
-            setattr(self, key, value)
 
     def _build_skill_prompt(self, query, raw_arguments: str) -> str:
         if raw_arguments:

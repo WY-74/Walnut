@@ -29,4 +29,3 @@ Note: The token content should not be written in plaintext, otherwise it will be
 3. 多步骤直接信息传递
 4. 异常兜底
 5. 多任务并行
-6. Agent工厂
