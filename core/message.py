@@ -1,7 +1,3 @@
-from typing import List
-
-from core.prompts.main_prompt import SKILL_SYSTEM_PROMPT
-from utils.format import ToolSpec
 from utils.logging_setup import configure_logging
 
 logger = configure_logging("message")

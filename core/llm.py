@@ -32,14 +32,14 @@ class LLM:
         )
         return self.parse_response(response.choices[0].message.content)
 
-    def parse_response(self, response: str) -> dict:
+    def parse_response(self, response: str) -> LLMResponse:
         try:
             response = LLMResponse.model_validate_json(response)
             logger.info(f"Parsed LLM response: {response}")
         except (json.JSONDecodeError, ValidationError):
             logger.warning(f"Failed to parse LLM response: {response}")
             response = LLMResponse(
-                Available=False,
-                RawErrorResponse=response,
+                available=False,
+                raw_error_response=response,
             )
-        return response.model_dump()
+        return response

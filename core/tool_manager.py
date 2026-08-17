@@ -175,8 +175,6 @@ class ToolManager:
             logger.info(f"Session for MCP server {tool.server_name} not found")
             return None
 
-        arguments = json.loads(arguments) if arguments else {}
-
         logger.info(f"Calling {tool_name} with arguments: {arguments}")
         result = await session.call_tool(tool.tool_name, arguments)
         return self._format_mcp_tool_result(result)

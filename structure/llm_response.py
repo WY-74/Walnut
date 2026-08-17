@@ -1,14 +1,19 @@
 from pydantic import BaseModel
 
 
+class Tool(BaseModel):
+    name: str
+    args: dict | None = None
+
+
 class ActionPayload(BaseModel):
-    Assets: list[str] | None = None
-    ToolCall: list[str] | None = None
+    assets: list[str] | None = None
+    tool_call: list[Tool] | None = None
 
 
 class LLMResponse(BaseModel):
-    Available: bool = True
-    Thought: str
-    Action: ActionPayload | None = None
-    Results: str | dict | None = None
-    RawErrorResponse: str | None = None
+    available: bool = True
+    thought: str
+    action: ActionPayload | None = None
+    results: str | dict | None = None
+    raw_error_response: str | None = None

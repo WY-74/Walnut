@@ -18,13 +18,14 @@ class PlanAgent:
 
     async def run(self, query: str, runner: RunTime, message: Message, tool_manager: ToolManager, run_id: str) -> str:
         """Run the MainAgent."""
+        result: Plan
         self.progress_store.start_node(run_id=run_id, node=self.node_name)
 
         message = self.init_message(message, tool_manager)
         message.add_message("user", query)
 
         result, status_code = await runner.run(message, self.llm, result_handler=self.parse_result)
-        if result.get("Error"):
+        if result.error is not None:
             status_code = 0
             logger.warning(f"{result}")
         self.progress_store.finish_node(
@@ -47,6 +48,6 @@ class PlanAgent:
     def parse_result(self, result: str | dict) -> dict:
         if isinstance(result, str):
             # String will only be returned if the task encounters an error.
-            return Plan(Error=result).model_dump()
+            return Plan(error=result)
         else:
-            return Plan.model_validate(result).model_dump()
+            return Plan.model_validate(result)

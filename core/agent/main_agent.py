@@ -5,6 +5,8 @@ from core.message import Message
 from core.tool_manager import ToolManager
 from core.agent.runtime import RunTime
 from core.prompts.main_prompt import MAIN_SYSTEM_PROMPT
+from structure.plan import Plan
+from structure.llm_response import ActionPayload
 from utils.sqlite_store import SQLiteStore
 from utils.logging_setup import configure_logging
 
@@ -20,6 +22,7 @@ class MainAgent:
 
     async def run(self, query: str, runner: RunTime, message: Message, tool_manager: ToolManager, run_id: str) -> str:
         """Run the MainAgent."""
+        plan: Plan
         self.progress_store.start_node(run_id=run_id, node=self.node_name)
 
         # We must run plan_agent first
@@ -34,9 +37,9 @@ class MainAgent:
                 run_id=run_id,
             )
 
-            if plan.get("Error"):
+            if plan.error is not None:
                 status_code = 0
-                plan_result = plan["Error"]
+                plan_result = plan.error
                 self.progress_store.finish_node(
                     run_id=run_id, node=self.node_name, final_context=plan_result, status_code=status_code
                 )
@@ -45,56 +48,40 @@ class MainAgent:
         if not message.context:
             self.init_message(message=message, tool_manager=tool_manager)
         message.add_message("user", query)
-        message.add_message("user", f"Plan: {plan}")
+        message.add_message("user", f"Plan: {plan.model_dump_json()}")
 
-        # TODO: 我们似乎不需要再main中执行runtime了
-        # TODO: 是否可以通过属性访问, 字典太麻烦
-        for task in plan["Tasks"]:
-            tools = task["Tools"]
-            if len(tools) == 1:
-                tool_name = tools[0]["Name"].split(".", 1)[-1].strip()
-                tool_args = tools[0]["Args"]
-                print(tool_name, tool_args)
-                exit()
+        for step, task in enumerate(plan.tasks):
+            tools = task.tools
+            if len(tools) > 1:
+                pass
+            else:
+                tool = tools[0].name
+                if tool.startswith("skill."):
+                    tool = tool.split(".", 1)[-1]
+                args = tools[0].args
+                query = self._build_skill_prompt(task.detail, args)
 
                 step_result, status_code = await self.skill_agent.run(
-                    query=task["Detail"],
+                    query=task.detail,
                     runner=runner,
                     message=Message(),
                     tool_manager=tool_manager,
                     run_id=run_id,
-                    skill_name=tool_name,
+                    skill_name=tool,
                 )
-                message.add_message("user", f"Task: {task['Detail']}\nResult: {step_result}")
+                # TODO: 错误处理
+                message.add_message("user", f"Step {step} Result: {step_result}")
 
-                if status_code == 0:
-                    pass
-                    # 处理错误
+        result, status_code = await runner.run(
+            message=message,
+            llm=self.llm,
+            result_handler=self.parse_result,
+        )
 
-        exit()
-
-        # async def handle_action(action: dict):
-        #     if not tool_name.startswith("skill."):
-        #         return None
-
-        #     skill_name = tool_name.split(".", 1)[1].strip()
-        #     skill_message = Message()
-        #     skill_query = self._build_skill_prompt(query, raw_arguments)
-
-        #     return await self.sub_agent.run(
-        #         query=skill_query,
-        #         runner=runner,
-        #         message=skill_message,
-        #         tool_manager=tool_manager,
-        #         run_id=run_id,
-        #         skill_name=skill_name,
-        #     )
-
-        # result, status_code = await runner.run(message=message, llm=self.llm, action_handler=handle_action)
         self.progress_store.finish_node(
             run_id=run_id, node=self.node_name, final_context=result, status_code=status_code
         )
-        return result
+        return result, status_code
 
     def init_message(self, message: Message, tool_manager: ToolManager) -> Message:
         # Only expose the skill as a tool here.
@@ -108,17 +95,29 @@ class MainAgent:
         message.context.append({"role": "system", "content": content})
         return message
 
-    # def handle_action(self, tool_name, tool_args):
-    #     tool_name = tool_name.split(".", 1)[-1].strip()
+    # async def handle_action(self, query: str, runner: RunTime, tool_manager: ToolManager, run_id: str):
+    #     #TODO: 之后在此函数内设计并行
+    #     async def handler(action: ActionPayload):
+    #         if len(action.tool_call) > 1:
+    #             pass
+    #         else:
+    #             tool = action.tool_call[0].name
+    #             args = action.tool_call[0].args
+    #             query = self._build_skill_prompt(query, args)
 
-    #     return await self.sub_agent.run(
-    #         query=skill_query,
-    #         runner=runner,
-    #         message=skill_message,
-    #         tool_manager=tool_manager,
-    #         run_id=run_id,
-    #         skill_name=skill_name,
-    #     )
+    #             return await self.skill_agent.run(
+    #                 query=query,
+    #                 runner=runner,
+    #                 message=Message(),
+    #                 tool_manager=tool_manager,
+    #                 run_id=run_id,
+    #                 skill_name=tool,
+    #             )
+
+    #     return handler
+
+    def parse_result(self, result: str) -> dict:
+        return result
 
     def _init_sub_agents(self, sub_agents: Dict[str, Callable]):
         if not sub_agents:
