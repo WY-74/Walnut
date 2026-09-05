@@ -2,6 +2,7 @@ from pydantic import BaseModel
 
 
 class Tool(BaseModel):
+    target: str
     name: str
     args: dict | None = None
 

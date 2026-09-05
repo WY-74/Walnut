@@ -14,6 +14,7 @@ results: 任务的最终结果, 如果当前还没有最终结果则为null.
         "assets": ["path_to_assets", ] 或 null,
         "tool_call": [
             {{
+                "target": "调用该工具的目的, 该字段不可为空",
                 "name": "工具名称",
                 "args": {{"参数名": "参数值"}} 或 null
             }}

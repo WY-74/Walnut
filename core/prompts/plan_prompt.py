@@ -12,9 +12,10 @@ PLAN_SYSTEM_PROMPT = """你是ReAct Agent. 你将分析用户需求并利用工�
     "results": {{
         "tasks": [
             {{
-                "detail": "任务细节描述",
+                "detail": "任务总体概述",
                 "tools": [
                     {{
+                        "target": "调用该工具的目的",
                         "name": "工具名称",
                         "args": "工具参数" 或者 null
                     }}
@@ -39,8 +40,9 @@ PLAN_SYSTEM_PROMPT = """你是ReAct Agent. 你将分析用户需求并利用工�
 4. detail: tasks的子字段, 对当前可执行步骤的描述, 该字段为必填项.
 5. tools: tasks的子字段, 每个元素均是当前可执行步骤需要用到的工具, 如果存在多个工具则表示可以让多个工具并行执行, 如果不需要调用任何工具则为null.
 6. error: results的子字段(仅缺少信息时), 对缺少信息的描述.
-6. name: tools的子字段. 工具名称, 该字段为必填项, 不能为null.
-7. args: tools的子字段. 工具参数, 如果需要参数请确保格式为{{"xxx": "xxx"}}, 如果当前不需要调用任何工具则为null.
+7. target: tools的子字段. 调用该工具的目的, 该字段为必填项, 不能为null.
+8. name: tools的子字段. 工具名称, 该字段为必填项, 不能为null.
+9. args: tools的子字段. 工具参数, 如果需要参数请确保格式为{{"xxx": "xxx"}}, 如果当前不需要调用任何工具则为null.
 
 **可用工具列表**:
 {tools}

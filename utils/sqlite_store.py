@@ -53,7 +53,7 @@ class SQLiteStore:
                 pe_ttm_x100 INTEGER NOT NULL,
                 date TEXT NOT NULL,
                 CHECK (length("date") = 10 AND date("date") IS NOT NULL),
-                UNIQUE (stock_code, date)
+                UNIQUE (date)
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_runid_id
@@ -129,3 +129,19 @@ class SQLiteStore:
                 """,
                 [now, final_context, status_code, run_id, node],
             )
+
+    def search_pe_ttm(self, stock_code: str, start_date: str, end_date: str) -> list[dict]:
+        with self._lock, self._connect() as conn:
+            cur = conn.execute(
+                """
+                SELECT
+                    stock_code,
+                    ROUND(CAST(pe_ttm_x100 AS REAL) / 100.0, 2) AS pe_ttm_percent,
+                    date
+                FROM pe_ttm
+                WHERE stock_code = ? AND date BETWEEN ? AND ?
+                ORDER BY date ASC
+                """,
+                [stock_code, start_date, end_date],
+            )
+            return [dict(row) for row in cur.fetchall()]

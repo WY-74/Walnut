@@ -1,4 +1,5 @@
 from typing import Callable, Dict
+
 from core.llm import LLM
 from core.message import Message
 from core.tool_manager import ToolManager
@@ -31,7 +32,7 @@ class BaseAgent:
     ):
         raise NotImplementedError("Subclasses must implement the run method.")
 
-    async def handle_action(self, *args, **kwargs) -> Callable:
+    def handle_action(self, *args, **kwargs) -> Callable:
         async def handler(action: ActionPayload):
             raise NotImplementedError("Subclasses must implement the run method.")
 

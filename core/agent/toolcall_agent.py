@@ -15,7 +15,7 @@ from utils.logging_setup import configure_logging
 logger = configure_logging("SkillAgent")
 
 
-class SkillAgent(BaseAgent):
+class ToolCallAgent(BaseAgent):
     def __init__(self, llm: LLM, progress_store: SQLiteStore | None = None, **sub_agents):
         super().__init__(llm=llm, progress_store=progress_store, sub_agent=sub_agents)
         self.node_name = "skill"

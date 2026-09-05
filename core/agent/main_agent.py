@@ -1,4 +1,5 @@
-from typing import Callable, Dict
+import asyncio
+from typing import Callable
 
 from core.llm import LLM
 from core.message import Message
@@ -7,6 +8,7 @@ from core.agent import BaseAgent
 from core.agent.runtime import RunTime
 from core.prompts.main_prompt import MAIN_SYSTEM_PROMPT
 from structure.plan import Plan
+from structure.llm_response import Tool, ActionPayload
 from utils.sqlite_store import SQLiteStore
 from utils.logging_setup import configure_logging
 
@@ -43,37 +45,18 @@ class MainAgent(BaseAgent):
                 )
                 return plan_result, status_code
 
+        print(f"Plan obtained: {plan.model_dump_json()}\n")
+
         if not message.context:
             self.init_message(message=message, tool_manager=tool_manager)
         message.add_message("user", query)
         message.add_message("user", f"Plan: {plan.model_dump_json()}")
 
-        for step, task in enumerate(plan.tasks):
-            tools = task.tools
-            if len(tools) > 1:
-                pass
-            else:
-                tool = tools[0].name
-                if tool.startswith("skill."):
-                    tool = tool.split(".", 1)[-1]
-                args = tools[0].args
-                query = self._build_skill_prompt(task.detail, args)
-
-                step_result, status_code = await self.skill_agent.run(
-                    query=task.detail,
-                    runner=runner,
-                    message=Message(),
-                    tool_manager=tool_manager,
-                    run_id=run_id,
-                    skill_name=tool,
-                )
-                # TODO: 错误处理
-                message.add_message("user", f"Step {step} Result: {step_result}")
-
         result, status_code = await runner.run(
-            message=message,
-            llm=self.llm,
+            message,
+            self.llm,
             result_handler=self.parse_result,
+            action_handler=self.handle_action(runner, tool_manager, run_id),
         )
 
         self.progress_store.finish_node(
@@ -93,7 +76,46 @@ class MainAgent(BaseAgent):
         message.context.append({"role": "system", "content": content})
         return message
 
-    def _build_skill_prompt(self, query, raw_arguments: str) -> str:
+    def handle_action(self, runner: RunTime, tool_manager: ToolManager, run_id: str) -> Callable:
+        async def handler(action: ActionPayload):
+            if action.tool_call and len(action.tool_call) == 1:
+                step_result, status_code = await self.run_single_step(action.tool_call[0], runner, tool_manager, run_id)
+            else:
+                toolcalls = action.tool_call
+                raw_result = await asyncio.gather(
+                    *(self.run_single_step(t, runner, tool_manager, run_id) for t in toolcalls), return_exceptions=True
+                )
+                status_code = 1 if all(r[-1] == 1 for r in raw_result) else 0
+                _raw_results = []
+                for idx, r in enumerate(raw_result):
+                    target = toolcalls[idx].target
+                    _raw_results.append(target + "-> " + r[0])
+
+                step_result = "\n".join(_raw_results)
+
+            return step_result
+
+        return handler
+
+    async def run_single_step(self, tool: Tool, runner: RunTime, tool_manager: ToolManager, run_id: str):
+        name = tool.name
+        if name.startswith("skill."):
+            name = name.split(".", 1)[-1]
+        args = tool.args
+        query = self._build_task_query(tool.target, args)
+
+        step_result, status_code = await self.toolcall_agent.run(
+            query=query,
+            runner=runner,
+            message=Message(),
+            tool_manager=tool_manager,
+            run_id=run_id,
+            skill_name=name,
+        )
+
+        return step_result, status_code
+
+    def _build_task_query(self, query, raw_arguments: str) -> str:
         if raw_arguments:
             return f"用户原始问题: {query}\n\n当前已知信息: {raw_arguments}"
         else:
