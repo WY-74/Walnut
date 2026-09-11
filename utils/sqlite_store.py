@@ -47,11 +47,23 @@ class SQLiteStore:
                     FOREIGN KEY(run_id) REFERENCES tasks(run_id)
                 );
 
+                CREATE TABLE IF NOT EXISTS pe_ttm (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                stock_code TEXT NOT NULL,
+                pe_ttm_x100 INTEGER NOT NULL,
+                date TEXT NOT NULL,
+                CHECK (length("date") = 10 AND date("date") IS NOT NULL),
+                UNIQUE (date)
+                );
+
                 CREATE INDEX IF NOT EXISTS idx_runid_id
                 ON progress (run_id, id);
 
                 CREATE INDEX IF NOT EXISTS idx_runid_node_id
                 ON progress(run_id, node, id);
+
+                CREATE INDEX IF NOT EXISTS idx_pe_ttm
+                ON pe_ttm (stock_code, date);
                 """)
 
     def start_run(self, query: str) -> str:
@@ -72,15 +84,15 @@ class SQLiteStore:
             with self._lock, self._connect() as conn:
                 cur = conn.execute(
                     """
-                            SELECT
-                                CASE
-                                    WHEN COUNT(*) = 0 THEN 0
-                                    WHEN SUM(CASE WHEN successful = 1 THEN 1 ELSE 0 END) = COUNT(*) THEN 1
-                                    ELSE 0
-                                END AS all_successful
-                            FROM progress
-                            WHERE run_id = ?
-                            """,
+                        SELECT
+                            CASE
+                                WHEN COUNT(*) = 0 THEN 0
+                                WHEN SUM(CASE WHEN successful = 1 THEN 1 ELSE 0 END) = COUNT(*) THEN 1
+                                ELSE 0
+                            END AS all_successful
+                        FROM progress
+                        WHERE run_id = ?
+                        """,
                     [run_id],
                 ).fetchone()
             status_code = 1 if cur["all_successful"] == 1 else 0
@@ -105,8 +117,9 @@ class SQLiteStore:
             )
             return int(cur.lastrowid)
 
-    def finish_node(self, run_id: str, node: str, final_context: str, status_code: int) -> None:
+    def finish_node(self, run_id: str, node: str, final_context: str | dict, status_code: int) -> None:
         now = self._now_iso()
+        final_context = final_context if isinstance(final_context, str) else str(final_context)
         with self._lock, self._connect() as conn:
             conn.execute(
                 """
@@ -115,4 +128,31 @@ class SQLiteStore:
                 WHERE id = (SELECT id FROM progress WHERE run_id = ? AND node =? ORDER BY id DESC LIMIT 1)
                 """,
                 [now, final_context, status_code, run_id, node],
+            )
+
+    def search_pe_ttm(self, stock_code: str, start_date: str, end_date: str) -> list[dict]:
+        with self._lock, self._connect() as conn:
+            cur = conn.execute(
+                """
+                SELECT
+                    stock_code,
+                    ROUND(CAST(pe_ttm_x100 AS REAL) / 100.0, 2) AS pe_ttm_percent,
+                    date
+                FROM pe_ttm
+                WHERE stock_code = ? AND date BETWEEN ? AND ?
+                ORDER BY date ASC
+                """,
+                [stock_code, start_date, end_date],
+            )
+            return [dict(row) for row in cur.fetchall()]
+
+    def add_pe_ttm(self, stock_code: str, pe_ttm: float, date: str) -> None:
+        pe_ttm_x100 = int(round(pe_ttm * 10000, 0))  # 保证数据不会丢失精度, 因此先进位后四舍五入
+        with self._lock, self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO pe_ttm(stock_code, pe_ttm_x100, date)
+                VALUES (?, ?, ?)
+                """,
+                [stock_code, pe_ttm_x100, date],
             )

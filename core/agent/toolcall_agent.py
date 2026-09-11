@@ -4,67 +4,78 @@ from pathlib import Path
 from core.llm import LLM
 from core.message import Message
 from core.tool_manager import ToolManager
+from core.agent import BaseAgent
 from core.agent.runtime import RunTime
+from core.prompts.skill_prompt import SKILL_SYSTEM_PROMPT
+from structure.llm_response import ActionPayload
 from utils.sqlite_store import SQLiteStore
+from utils.format import SkillServerSpec
 from utils.logging_setup import configure_logging
 
 logger = configure_logging("SkillAgent")
 
 
-class ToolCallAgent:
-    def __init__(self, llm: LLM, sub_agent: Callable = None, progress_store: SQLiteStore | None = None):
-        self.llm = llm
-        self.sub_agent = sub_agent
-        self.progress_store = progress_store
-        self.node_name = "toolcall"
+class ToolCallAgent(BaseAgent):
+    def __init__(self, llm: LLM, progress_store: SQLiteStore | None = None, **sub_agents):
+        super().__init__(llm=llm, progress_store=progress_store, sub_agent=sub_agents)
+        self.node_name = "skill"
 
     async def run(
         self, query: str, runner: RunTime, message: Message, tool_manager: ToolManager, run_id: str, skill_name: str
     ) -> str:
         self.progress_store.start_node(run_id=run_id, node=self.node_name)
 
-        skill = tool_manager.get_skill(skill_name)
+        skill: SkillServerSpec = tool_manager.get_skill(skill_name)
         if skill is None:
             result = f"Skill '{skill_name}' not found"
             self.progress_store.finish_node(run_id=run_id, node=self.node_name, final_context=result, status_code=0)
             logger.info(result)
-            return None
+            return None, 0
 
-        skill_detail = tool_manager.get_skill_detail(skill_name)
-        if skill_detail is None:
-            result = f"Skill detail for {skill_name} is None"
-            self.progress_store.finish_node(run_id=run_id, node=self.node_name, final_context=result, status_code=0)
-            logger.info(result)
-            return None
-
-        available_tools = tool_manager.list_mcp_tools_for_skill(skill_name)
-        if available_tools is None:
-            result = f"Available tools for skill {skill_name} is None"
-            self.progress_store.finish_node(run_id=run_id, node=self.node_name, final_context=result, status_code=0)
-            logger.info(result)
-            return None
-
-        message.reset_context()
-        message.init_skill_message(available_tools, skill_detail)
+        message = self.init_message(message=message, tool_manager=tool_manager, skill_name=skill_name)
         message.add_message("user", query)
 
-        async def handle_action(action: dict):
+        result, status_code = await runner.run(
+            message,
+            self.llm,
+            result_handler=self.parse_result,
+            action_handler=await self.handle_action(skill, tool_manager),
+        )
+        self.progress_store.finish_node(
+            run_id=run_id, node=self.node_name, final_context=result, status_code=status_code
+        )
+        return result, status_code
+
+    def init_message(self, message: Message, tool_manager: ToolManager, skill_name: str) -> Message:
+        message.reset_context()
+
+        tools = [
+            f"- {tool.server_name}.{tool.tool_name}: {tool.tool_description}"
+            for tool in tool_manager.list_mcp_tools_for_skill(skill_name)
+        ]
+        detail = tool_manager.get_skill_detail(skill_name)
+
+        system_prompt = SKILL_SYSTEM_PROMPT.format(tools='\n'.join(tools), detail=detail)
+
+        message.reset_context()
+        message.context.append({"role": "system", "content": system_prompt})
+        return message
+
+    async def handle_action(self, skill: SkillServerSpec, tool_manager: ToolManager) -> Callable:
+        async def handler(action: ActionPayload):
             try:
-                if action.get("Assets"):
-                    assets = self._parse_assets(Path(skill.skill_path), action["Assets"])
+                if action.assets:
+                    assets = self._parse_assets(Path(skill.skill_path), action.assets)
                     return assets
                 else:
-                    tool_name, raw_arguments = action["ToolCall"].split("|", 1)
-                    return await tool_manager.call_mcp_tool(tool_name.strip(), raw_arguments.strip())
+                    tool = action.tool_call[0]
+                    tool_name, raw_arguments = tool.name, tool.args
+                    return await tool_manager.call_mcp_tool(tool_name.strip(), raw_arguments)
             except KeyError:
                 logger.info(f"Action does not contain 'Assets' key: {action}")
                 return None
 
-        result, status_code = await runner.run(message, self.llm, handle_action)
-        self.progress_store.finish_node(
-            run_id=run_id, node=self.node_name, final_context=result, status_code=status_code
-        )
-        return result
+        return handler
 
     def _parse_assets(self, root: Path, assets: list[str]) -> str:
         result = ""

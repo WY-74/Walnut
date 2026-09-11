@@ -11,6 +11,10 @@
                 "LIXINGER_TOKEN": "${LIXINGER_TOKEN}"
             }
         },
+        "sqlite": {
+            "command": "D:/projects/Walnut/walnut/Scripts/python.exe",
+            "args": [".agents/mcp_tools/sqlite.py"]
+        },
         "notion":{
             "command": "npx",
             "args": ["-y", "@notionhq/notion-mcp-server"],
@@ -20,9 +24,17 @@
         }
     },
     "skills": {
+        "norm": {
+            "skill_path": ".agents/skills/norm",
+            "need_tools": ["norm"]
+        },
         "lixinger": {
             "skill_path": ".agents/skills/lixinger",
-            "need_tools": ["norm", "lixinger"]
+            "need_tools": ["lixinger"]
+        },
+        "local_database": {
+            "skill_path": ".agents/skills/local_database",
+            "need_tools": ["sqlite"]
         },
         "note": {
             "skill_path": ".agents/skills/note",

@@ -2,6 +2,8 @@ import os
 import json
 
 from openai import OpenAI
+from pydantic import ValidationError
+from structure.llm_response import LLMResponse
 from utils.logging_setup import configure_logging
 
 logger = configure_logging("LLM")
@@ -19,19 +21,25 @@ class LLM:
 
         logger.info(f"LLM initialized with model: {self.model}")
 
-    async def response_context(self, messages):
+    async def response_context(self, messages) -> dict:
         response = self.llm.chat.completions.create(
             model=self.model,
             messages=messages,
             stream=False,
+            response_format={'type': 'json_object'},
             reasoning_effort="high",
             extra_body={"thinking": {"type": "enabled"}},
         )
         return self.parse_response(response.choices[0].message.content)
 
-    def parse_response(self, response: str) -> dict:
+    def parse_response(self, response: str) -> LLMResponse:
         try:
-            response = json.loads(response)
-        except json.JSONDecodeError:
-            pass
+            response = LLMResponse.model_validate_json(response)
+            logger.info(f"Parsed LLM response: {response}")
+        except (json.JSONDecodeError, ValidationError):
+            logger.warning(f"Failed to parse LLM response: {response}")
+            response = LLMResponse(
+                available=False,
+                raw_error_response=response,
+            )
         return response

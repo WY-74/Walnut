@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from pydantic import BaseModel
 
 
 @dataclass(frozen=True)

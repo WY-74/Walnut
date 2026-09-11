@@ -1,13 +1,26 @@
 ---
 name: lixinger
-description: 查讯某日某个指数基本面信息，当用户要求查讯xxx日xxx基本面信息时使用。该skill无需参数。
+description: 支持指数信息查讯相关操作
+  - 功能1：获取指定日期的指数PE-TTM信息
+    - Args:
+      - stockcode: 指数代码
+      - date: 日期，格式为YYYY-MM-DD
+    - Return:
+      - 所查指数在指定日期时的PE-TTM结果
+  - 功能2：获取指数对应唯一代码
+    - Args:
+      - stockname: 完整指数名称
+    - Return:
+      - 所查讯指数对应的唯一代码
 ---
 
+请严格按照以下流程进行
+
 ## 执行流程
-1. **判断是否有指数名称**: 如果用户提供了指数名称但没有提供stockCodes，那么可以通过 `lixinger.get_hk_stockcodes` 工具获取指数的stockCodes, 然后进行第4步. 
-2. **询问用户指数名**：如果用户没有提供stockCode或者指数名称，那么需要询问用户指数名称，得到回答后然后通过 `lixinger.get_hk_stockcodes` 工具获取指数的stockCodes。
-3. **检查stockCodes**: 如果得到的查讯结果为 None, 则直接返回 "stockCodes错误! 请重新确认指数名称再次查讯" 给用户, 不进行后续步骤.
-4. **获取当前日期**：通过 `lixinger.get_date` 工具获取当前日期, 记录为YYYY-MM-DD格式.
-5. **判断日期**：通过时间判断用户期望查讯的日期, 保持YYYY-MM-DD格式.
-6. **执行查讯**：运行 `lixinger.fundamental` 工具获取指数的基本面信息。
-7. **返回结果**：将查询结果返回给用户。
+- 功能1
+  1. **判断是否有唯一指数代码**: 通常指数代码包含数字或字母，不存在汉字和特殊字符。如果用户提供代码合规则继续，如果得到的指数代码结果为 None 或者不合规, 则直接返回 "stockCodes错误! 请重新确认指数名称再次查讯" 给用户, 不进行后续步骤.
+  2. **执行查讯**：运行 `lixinger.fundamental` 工具获取指数的基本面信息。
+  3. **返回结果**：将查询结果返回给用户。
+- 功能2: 获取指数对应唯一代码
+  1. **执行查讯**：运行 `lixinger.get_hk_stockcode` 工具获取指数的唯一代码。
+  2. **返回结果**：将查询结果返回。

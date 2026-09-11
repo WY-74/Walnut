@@ -5,8 +5,7 @@ from utils.logging_setup import configure_logging
 from core.llm import LLM
 from core.message import Message
 from core.tool_manager import ToolManager
-from core.agent.main_agent import MainAgent
-from core.agent.toolcall_agent import ToolCallAgent
+from core.agent import MainAgent, PlanAgent, ToolCallAgent
 from core.agent.runtime import RunTime
 from utils.sqlite_store import SQLiteStore
 from utils.tui import run_cli, show_boot_screen, ask_query, show_bye, show_result, show_error
@@ -14,7 +13,7 @@ from utils.tui import run_cli, show_boot_screen, ask_query, show_bye, show_resul
 logger = configure_logging("main")
 
 
-def init_walunt(settings: dict) -> None:
+def init_walunt(settings: dict) -> tuple[LLM, RunTime, ToolManager, Message, SQLiteStore, dict]:
     llm = LLM(settings["model"])
     runner = RunTime(max_loops=settings.get("runtime_max_loops", 5))
 
@@ -39,37 +38,42 @@ async def _start_server() -> None:
 
     llm, runner, tool_manager, message, progress_store, settings = init_walunt(settings)
 
+    plan_agent = PlanAgent(llm=llm, progress_store=progress_store)
     toolcall_agent = ToolCallAgent(llm=llm, progress_store=progress_store)
-    main_agent = MainAgent(llm=llm, sub_agent=toolcall_agent, progress_store=progress_store)
+    main_agent = MainAgent(llm=llm, progress_store=progress_store, plan_agent=plan_agent, toolcall_agent=toolcall_agent)
 
+    queries = []
     async with tool_manager.lifespan(settings):
         while True:
             try:
                 query = ask_query()
+                if not query:
+                    continue
+                if query.lower() == "exit":
+                    show_bye()
+                    break
+
+                queries.append(query)
+                query = "\n".join(queries)
+                run_id = progress_store.start_run(query)
+
+                try:
+                    result, status_code = await main_agent.run(
+                        query=query, runner=runner, message=message, tool_manager=tool_manager, run_id=run_id
+                    )
+                    if status_code == 1:
+                        queries.clear()  # Clear queries on successful completion
+
+                    progress_store.finish_run(run_id, status_code)
+                    # show_result(result)
+                except Exception as e:
+                    progress_store.finish_run(run_id, 0)
+                    show_error(e)
+                    raise
+
             except (KeyboardInterrupt, EOFError):
                 show_bye()
                 break
-
-            if not query:
-                continue
-
-            if query.lower() == "exit":
-                show_bye()
-                break
-
-            run_id = progress_store.start_run(query)
-
-            try:
-                result = await main_agent.run(
-                    query=query, runner=runner, message=message, tool_manager=tool_manager, run_id=run_id
-                )
-
-                progress_store.finish_run(run_id)
-                show_result(result)
-            except Exception as e:
-                progress_store.finish_run(run_id, 0)
-                show_error(e)
-                raise
 
 
 def main():
