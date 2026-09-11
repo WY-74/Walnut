@@ -25,5 +25,17 @@ def search_data(stockcode: str, start_time: str, end_time: str) -> str:
     return json.dumps(sql.search_pe_ttm(stockcode, start_time, end_time))
 
 
+@mcp.tool(meta={"version": "1.0.0"})
+def add_data(stockcode: str, pe_ttm: float, date: str) -> str:
+    """添加指数基本面数据, 需要如下参数:
+    - stockcode: 待添加指数的唯一代码
+    - pe_ttm: 市盈率(TTM), 格式: float, 注意不要舍弃小数部分任何位
+    - date: 数据对应的日期, 格式: "YYYY-MM-DD"
+    """
+    sql = SQLiteStore()
+    sql.add_pe_ttm(stockcode, pe_ttm, date)
+    return json.dumps({"status": "success"})
+
+
 if __name__ == "__main__":
     mcp.run(transport="stdio")

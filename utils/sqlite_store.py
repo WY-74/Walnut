@@ -145,3 +145,14 @@ class SQLiteStore:
                 [stock_code, start_date, end_date],
             )
             return [dict(row) for row in cur.fetchall()]
+
+    def add_pe_ttm(self, stock_code: str, pe_ttm: float, date: str) -> None:
+        pe_ttm_x100 = int(round(pe_ttm * 10000, 0))  # 保证数据不会丢失精度, 因此先进位后四舍五入
+        with self._lock, self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO pe_ttm(stock_code, pe_ttm_x100, date)
+                VALUES (?, ?, ?)
+                """,
+                [stock_code, pe_ttm_x100, date],
+            )

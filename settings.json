@@ -32,8 +32,8 @@
             "skill_path": ".agents/skills/lixinger",
             "need_tools": ["lixinger"]
         },
-        "search_from_sqlite": {
-            "skill_path": ".agents/skills/search_from_sqlite",
+        "local_database": {
+            "skill_path": ".agents/skills/local_database",
             "need_tools": ["sqlite"]
         },
         "note": {

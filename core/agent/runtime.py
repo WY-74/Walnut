@@ -8,6 +8,7 @@ from core.message import Message
 from core.prompts.error import PARSE_LLM_RESPONSE_ERROR, RESULT_HANDLER_ERROR, ACTION_HANDLER_ERROR
 from structure.llm_response import LLMResponse
 from utils.logging_setup import configure_logging
+from utils.tui import show_result
 
 logger = configure_logging("runtime")
 
@@ -37,6 +38,7 @@ class RunTime:
             if response.results is not None:
                 try:
                     result = result_handler(response.results)
+                    show_result(result)
                     return result, 1
                 except (ValidationError, JSONDecodeError) as e:
                     message.add_message("user", RESULT_HANDLER_ERROR)

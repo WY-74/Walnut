@@ -65,7 +65,7 @@ async def _start_server() -> None:
                         queries.clear()  # Clear queries on successful completion
 
                     progress_store.finish_run(run_id, status_code)
-                    show_result(result)
+                    # show_result(result)
                 except Exception as e:
                     progress_store.finish_run(run_id, 0)
                     show_error(e)

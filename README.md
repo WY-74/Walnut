@@ -23,8 +23,3 @@ Note: The token content should not be written in plaintext, otherwise it will be
 ## Run
 `python ~/main.py`
 
-## TODO:
-1. 需求不明确时卡槽可以优化，不必彻底返回到main拼接，在Plan阶段解决即可
-2. plan时可以连同Agent调用一同给出，就可以随意扩展Agent了
-3. 异常兜底
-4. 增加数据写入SQLite
