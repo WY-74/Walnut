@@ -24,10 +24,10 @@ Note: The token content should not be written in plaintext, otherwise it will be
 `python ~/main.py`
 
 ## TODO:
-1. 需求不明确时卡槽可以优化，不必彻底返回到main拼接，在Plan阶段解决即可
 2. plan时可以连同Agent调用一同给出，就可以随意扩展Agent了
 3. 异常兜底
 4. Plan优化，任务结束后可以移出message
-5. 打印优化
-6. 考虑如何备份原有的策略，然后进行循环所有时间得到一个策略
+5. 打印优化，和日志优化 # HERE
+6. Plan检测
+7. Pydantic异常会导致流程报错: status_code = 1 if all(r[-1] == 1 for r in raw_result) else 0
 

@@ -42,6 +42,7 @@
         }
     },
     "version": "dev",
+    "log_level": "debug",
     "model": "deepseek-v4-pro",
     "runtime_max_loops": 10,
     "sqlite_path": "logs/progress.db"

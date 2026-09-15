@@ -19,7 +19,7 @@ class LLM:
         api_key = os.environ.get(f"{model.split('-', 1)[0].upper()}_API_KEY")
         self.llm = OpenAI(api_key=api_key, base_url=mmap[self.model])
 
-        logger.info(f"LLM initialized with model: {self.model}")
+        logger.info(f"[Walnut]LLM initialized with model: {self.model}")
 
     async def response_context(self, messages) -> dict:
         response = self.llm.chat.completions.create(

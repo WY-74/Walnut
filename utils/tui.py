@@ -53,6 +53,11 @@ def ask_query() -> str:
     return Prompt.ask("[bold white]>[/bold white] Type message or command").strip()
 
 
+def ask_followup(question: str) -> str:
+    console.print(f"[bold #8A5A34]WALNUT[/bold #8A5A34]: {question}")
+    return Prompt.ask("[bold #EAB676]>[/bold #EAB676] 请补充必要信息").strip()
+
+
 def show_bye() -> None:
     console.print("[bold #8A5A34]WALNUT[/bold #8A5A34]: Bye!")
 
@@ -63,3 +68,4 @@ def show_result(text: str) -> None:
 
 def show_error(err: Exception) -> None:
     console.print(f"[bold red]Error[/bold red]: {err}")
+    exit()

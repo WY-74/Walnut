@@ -1,6 +1,6 @@
 from utils.logging_setup import configure_logging
 
-logger = configure_logging("message")
+logger = configure_logging("Message")
 
 
 class Message:

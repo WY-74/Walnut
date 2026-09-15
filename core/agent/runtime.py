@@ -10,7 +10,7 @@ from structure.llm_response import LLMResponse
 from utils.logging_setup import configure_logging
 from utils.tui import show_result
 
-logger = configure_logging("runtime")
+logger = configure_logging("RunTime")
 
 ActionHandler = Callable[[str, str], Awaitable[Any]]
 ResultHandler = Callable[[str, str], Awaitable[Any]]
@@ -19,6 +19,7 @@ ResultHandler = Callable[[str, str], Awaitable[Any]]
 class RunTime:
     def __init__(self, max_loops: int = 5):
         self.max_loops = max_loops
+        logger.info(f"[Walnut]RunTime initialized with max_loops: {self.max_loops}")
 
     async def run(
         self, message: Message, llm: LLM, result_handler: ResultHandler, action_handler: ActionHandler | None = None

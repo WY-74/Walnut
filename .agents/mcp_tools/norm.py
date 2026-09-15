@@ -23,7 +23,7 @@ def load_strategy() -> str:
 
 @mcp.tool(meta={"version": "1.0.0"})
 def rewrite_strategy(text: str) -> str:
-    """重写交易策略,  需要如下参数:
+    """覆盖交易策略,  需要如下参数:
     - text: 要重写入的交易策略文本"""
     with open("strategy.md", "w", encoding="utf-8") as f:
         f.write(text)

@@ -1,6 +1,6 @@
 ---
 name: lixinger
-description: 支持指数信息查讯相关操作
+description: 支持在线指数信息查讯相关操作
   - 功能1：获取指定日期的指数PE-TTM信息
     - Args:
       - stockcode: 指数代码
