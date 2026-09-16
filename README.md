@@ -24,10 +24,8 @@ Note: The token content should not be written in plaintext, otherwise it will be
 `python ~/main.py`
 
 ## TODO:
-2. plan时可以连同Agent调用一同给出，就可以随意扩展Agent了
-3. 异常兜底
-4. Plan优化，任务结束后可以移出message
-5. 打印优化，和日志优化 # HERE
+1. plan时可以连同Agent调用一同给出，就可以随意扩展Agent了
+5. 和日志优化 # HERE
 6. Plan检测
 8. finish node 的时候是不是塞入整个message更好
 9. 由于在runtime和agent流程中发生错误会直接raise，因此对于子Agent在数据库中的node_status为空，我们不需要记录status, 当raise之后依据run_id将所有为空的status设置成0即可

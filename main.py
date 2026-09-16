@@ -63,6 +63,8 @@ async def _start_server() -> None:
                 except Exception as e:
                     progress_store.finish_run(run_id, 0)
                     show_error(e)
+                finally:
+                    message.clear_plan()
 
             except (KeyboardInterrupt, EOFError):
                 show_bye()

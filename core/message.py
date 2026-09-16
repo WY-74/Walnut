@@ -10,8 +10,17 @@ class Message:
     def reset_context(self):
         self.context = []
 
-    def add_message(self, role: str, content: str):
+    def add_message(self, role: str, content: str, extra: dict[str, str] = None):
         """
         添加对话消息到context和history
         """
-        self.context.append({"role": role, "content": content})
+        message = {"role": role, "content": content}
+        if extra:
+            message.update(extra)
+        self.context.append(message)
+
+    def clear_plan(self):
+        for idx in range(len(self.context) - 1, -1, -1):
+            if self.context[idx].get("type") == "plan":
+                del self.context[idx]
+                return

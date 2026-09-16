@@ -40,7 +40,7 @@ class MainAgent(BaseAgent):
         if not message.context:
             self.init_message(message=message, tool_manager=tool_manager)
         message.add_message("user", query)
-        message.add_message("user", f"Plan: {plan.model_dump_json()}")
+        message.add_message("user", f"Plan: {plan.model_dump_json()}", extra={"type": "plan"})
 
         result: PlainText = await runner.run(
             message,
