@@ -29,5 +29,8 @@ Note: The token content should not be written in plaintext, otherwise it will be
 4. Plan优化，任务结束后可以移出message
 5. 打印优化，和日志优化 # HERE
 6. Plan检测
-7. Pydantic异常会导致流程报错: status_code = 1 if all(r[-1] == 1 for r in raw_result) else 0
+8. finish node 的时候是不是塞入整个message更好
+9. 由于在runtime和agent流程中发生错误会直接raise，因此对于子Agent在数据库中的node_status为空，我们不需要记录status, 当raise之后依据run_id将所有为空的status设置成0即可
+10. pydantic 和 dataclasses
+11. 任务异常之后的数据还原，例如已经存储到数据库，但后续任务失败
 

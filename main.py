@@ -55,14 +55,14 @@ async def _start_server() -> None:
                 run_id = progress_store.start_run(query)
 
                 try:
-                    _, status_code = await main_agent.run(
+                    result = await main_agent.run(
                         query=query, runner=runner, message=message, tool_manager=tool_manager, run_id=run_id
                     )
-                    progress_store.finish_run(run_id, status_code)
+                    progress_store.finish_run(run_id, 1)
+                    show_result(result)
                 except Exception as e:
                     progress_store.finish_run(run_id, 0)
                     show_error(e)
-                    raise
 
             except (KeyboardInterrupt, EOFError):
                 show_bye()

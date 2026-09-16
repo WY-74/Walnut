@@ -4,7 +4,7 @@ from core.llm import LLM
 from core.message import Message
 from core.tool_manager import ToolManager
 from core.agent.runtime import RunTime
-from structure.llm_response import ActionPayload
+from structure.base_structure import ActionPayload, PlainText
 from utils.sqlite_store import SQLiteStore
 from utils.logging_setup import configure_logging
 
@@ -41,5 +41,5 @@ class BaseAgent:
     def init_message(self, message: Message, tool_manager: ToolManager, *args, **kwargs) -> Message:
         raise NotImplementedError("Subclasses must implement the run method.")
 
-    def parse_result(self, result: str | dict, *args, **kwargs) -> dict:
-        return result
+    def parse_result(self, result: str, *args, **kwargs) -> dict:
+        return PlainText(result=result, error=None)

@@ -1,4 +1,6 @@
+import json
 from typing import TypedDict, Any
+from pydantic import ValidationError
 from langgraph.graph import START, END, StateGraph
 from langgraph.types import Command, interrupt
 from langgraph.checkpoint.memory import InMemorySaver as _MemorySaver
@@ -9,6 +11,7 @@ from core.tool_manager import ToolManager
 from core.agent import BaseAgent
 from core.agent.runtime import RunTime
 from core.prompts.plan_prompt import PLAN_SYSTEM_PROMPT
+from structure.base_structure import ReAct
 from structure.plan import Plan
 from utils.sqlite_store import SQLiteStore
 from utils.logging_setup import configure_logging
@@ -54,29 +57,26 @@ class PlanAgent(BaseAgent):
                     answer = ask_followup(question).strip()
 
                     if not answer:
-                        final = Plan(error=f"缺少信息且未提供回答, 终止计划({question})")
+                        final_context = f"缺少信息且未提供回答, 终止PlanAgent({question})"
                         self.progress_store.finish_node(
-                            run_id=run_id, node=self.node_name, final_context=str(final), status_code=0
+                            run_id=run_id, node=self.node_name, final_context=final_context, status_code=0
                         )
-                        return final
+                        raise Exception(final_context)
 
                     next_input = Command(resume=answer)
                     continue
 
                 plan = result.get("plan")
                 if plan is None:
-                    final = Plan(error="HITL流程未返回有效计划。")
+                    final_context = "HITL流程没有返回有效的Plan"
                     self.progress_store.finish_node(
-                        run_id=run_id, node=self.node_name, final_context=final, status_code=0
+                        run_id=run_id, node=self.node_name, final_context=final_context, status_code=0
                     )
-                    return final
+                    raise Exception(final_context)
 
-                final = Plan.model_validate(plan)
-                status_code = 0 if final.error is not None else 1
-                self.progress_store.finish_node(
-                    run_id=run_id, node=self.node_name, final_context=final, status_code=status_code
-                )
-                return final
+                plan = self.parse_result(plan)
+                self.progress_store.finish_node(run_id=run_id, node=self.node_name, final_context=plan, status_code=1)
+                return plan
 
         except Exception as e:
             self.progress_store.finish_node(run_id=run_id, node=self.node_name, final_context=str(e), status_code=0)
@@ -94,12 +94,14 @@ class PlanAgent(BaseAgent):
         message.context.append({"role": "system", "content": system_prompt})
         return message
 
-    def parse_result(self, result: str | dict) -> dict:
-        if isinstance(result, str):
-            # String will only be returned if the task encounters an error.
-            return Plan(error=result)
-        else:
-            return Plan.model_validate(result)
+    def parse_result(self, result: dict) -> Plan:
+        try:
+            plan = Plan.model_validate(result)
+        except (json.JSONDecodeError, ValidationError) as e:
+            plan = Plan(tasks=result, info_error=None, error=str(e))
+
+        logger.debug(f"[Walnut]Parsed plan: {plan}")
+        return plan
 
     async def _plan_once(self, query: str, runner: RunTime, tool_manager: ToolManager) -> Plan:
         result: Plan
@@ -107,9 +109,7 @@ class PlanAgent(BaseAgent):
         message = self.init_message(Message(), tool_manager)
         message.add_message("user", query)
 
-        result, _ = await runner.run(message, self.llm, result_handler=self.parse_result)
-        if result.error is not None:
-            logger.warning(f"{result}")
+        result = await runner.run(message, self.llm, result_handler=self.parse_result, caller=self.__class__.__name__)
         return result
 
     def _build_hitl_graph(self, runner: RunTime, tool_manager: ToolManager):
@@ -120,8 +120,8 @@ class PlanAgent(BaseAgent):
                 tool_manager=tool_manager,
             )
 
-            if plan.error is not None:
-                return {"pending_question": plan.error, "plan": None}
+            if plan.info_error:
+                return {"pending_question": plan.info_error, "plan": None}
             return {"pending_question": None, "plan": plan.model_dump()}
 
         def ask_human_node(state: PlanHITLState) -> dict:

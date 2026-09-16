@@ -7,7 +7,7 @@ from core.tool_manager import ToolManager
 from core.agent import BaseAgent
 from core.agent.runtime import RunTime
 from core.prompts.skill_prompt import SKILL_SYSTEM_PROMPT
-from structure.llm_response import ActionPayload
+from structure.base_structure import ActionPayload, PlainText
 from utils.sqlite_store import SQLiteStore
 from utils.format import SkillServerSpec
 from utils.logging_setup import configure_logging
@@ -27,24 +27,25 @@ class ToolCallAgent(BaseAgent):
 
         skill: SkillServerSpec = tool_manager.get_skill(skill_name)
         if skill is None:
-            result = f"Skill '{skill_name}' not found"
-            self.progress_store.finish_node(run_id=run_id, node=self.node_name, final_context=result, status_code=0)
+            final_context = f"没有找到 Skill '{skill_name}'"
+            self.progress_store.finish_node(
+                run_id=run_id, node=self.node_name, final_context=final_context, status_code=0
+            )
             logger.info(result)
-            return None, 0
+            raise Exception(final_context)
 
         message = self.init_message(message=message, tool_manager=tool_manager, skill_name=skill_name)
         message.add_message("user", query)
 
-        result, status_code = await runner.run(
+        result: PlainText = await runner.run(
             message,
             self.llm,
             result_handler=self.parse_result,
             action_handler=await self.handle_action(skill, tool_manager),
+            caller=self.__class__.__name__,
         )
-        self.progress_store.finish_node(
-            run_id=run_id, node=self.node_name, final_context=result, status_code=status_code
-        )
-        return result, status_code
+        self.progress_store.finish_node(run_id=run_id, node=self.node_name, final_context=result.result, status_code=1)
+        return result
 
     def init_message(self, message: Message, tool_manager: ToolManager, skill_name: str) -> Message:
         message.reset_context()

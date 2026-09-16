@@ -1,9 +1,9 @@
 import os
 import json
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 from pydantic import ValidationError
-from structure.llm_response import LLMResponse
+from structure.base_structure import ReAct
 from utils.logging_setup import configure_logging
 
 logger = configure_logging("LLM")
@@ -17,12 +17,12 @@ class LLM:
 
         self.model = model
         api_key = os.environ.get(f"{model.split('-', 1)[0].upper()}_API_KEY")
-        self.llm = OpenAI(api_key=api_key, base_url=mmap[self.model])
+        self.llm = AsyncOpenAI(api_key=api_key, base_url=mmap[self.model])
 
         logger.info(f"[Walnut]LLM initialized with model: {self.model}")
 
     async def response_context(self, messages) -> dict:
-        response = self.llm.chat.completions.create(
+        response = await self.llm.chat.completions.create(
             model=self.model,
             messages=messages,
             stream=False,
@@ -32,14 +32,11 @@ class LLM:
         )
         return self.parse_response(response.choices[0].message.content)
 
-    def parse_response(self, response: str) -> LLMResponse:
+    def parse_response(self, response: str) -> ReAct:
         try:
-            response = LLMResponse.model_validate_json(response)
-            logger.info(f"Parsed LLM response: {response}")
-        except (json.JSONDecodeError, ValidationError):
-            logger.warning(f"Failed to parse LLM response: {response}")
-            response = LLMResponse(
-                available=False,
-                raw_error_response=response,
-            )
+            response = ReAct.model_validate_json(response)
+        except (json.JSONDecodeError, ValidationError) as e:
+            response = ReAct(thought=str(e), action=None, results=None, error=response)
+
+        logger.debug(f"[Walnut]Parsed response: {response}")
         return response

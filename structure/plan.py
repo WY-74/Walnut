@@ -13,5 +13,6 @@ class Task(BaseModel):
 
 
 class Plan(BaseModel):
-    tasks: list[Task] | None = None
+    tasks: list[Task] | dict | None
+    info_error: str | None
     error: str | None = None
