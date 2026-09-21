@@ -4,12 +4,13 @@ from pydantic import BaseModel
 class Tool(BaseModel):
     target: str
     name: str
-    args: dict | None = None
+    args: dict | None
 
 
 class Task(BaseModel):
     detail: str
-    tools: list[Tool] | None = None
+    tools: list[Tool] | None
+    save: bool
 
 
 class Plan(BaseModel):

@@ -1,3 +1,6 @@
+import json
+from typing import Any
+
 from utils.logging_setup import configure_logging
 
 logger = configure_logging("Message")
@@ -10,13 +13,14 @@ class Message:
     def reset_context(self):
         self.context = []
 
-    def add_message(self, role: str, content: str, extra: dict[str, str] = None):
+    def add_message(self, role: str, content: Any):
         """
         添加对话消息到context和history
         """
+        if not isinstance(content, str):
+            content = json.dumps(content)  # The chat.completions must be a Dict(str, str) as messages
+
         message = {"role": role, "content": content}
-        if extra:
-            message.update(extra)
         self.context.append(message)
 
     def clear_plan(self):

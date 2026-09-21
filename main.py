@@ -5,7 +5,7 @@ from utils.logging_setup import configure_logging
 from core.llm import LLM
 from core.message import Message
 from core.tool_manager import ToolManager
-from core.agent import MainAgent, PlanAgent, ToolCallAgent
+from core.agent import MainAgent, PlanAgent, ToolCallAgent, EvaluatorAgent
 from core.agent.runtime import RunTime
 from utils.sqlite_store import SQLiteStore
 from utils.tui import run_cli, show_boot_screen, ask_query, show_bye, show_result, show_error
@@ -39,8 +39,15 @@ async def _start_server() -> None:
     llm, runner, tool_manager, message, progress_store, settings = init_walunt(settings)
 
     plan_agent = PlanAgent(llm=llm, progress_store=progress_store)
+    evaluator_agent = EvaluatorAgent(llm=llm, progress_store=progress_store)
     toolcall_agent = ToolCallAgent(llm=llm, progress_store=progress_store)
-    main_agent = MainAgent(llm=llm, progress_store=progress_store, plan_agent=plan_agent, toolcall_agent=toolcall_agent)
+    main_agent = MainAgent(
+        llm=llm,
+        progress_store=progress_store,
+        plan_agent=plan_agent,
+        toolcall_agent=toolcall_agent,
+        evaluator_agent=evaluator_agent,
+    )
 
     async with tool_manager.lifespan(settings):
         while True:

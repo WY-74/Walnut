@@ -11,7 +11,6 @@ from core.tool_manager import ToolManager
 from core.agent import BaseAgent
 from core.agent.runtime import RunTime
 from core.prompts.plan_prompt import PLAN_SYSTEM_PROMPT
-from structure.base_structure import ReAct
 from structure.plan import Plan
 from utils.sqlite_store import SQLiteStore
 from utils.logging_setup import configure_logging
@@ -27,11 +26,15 @@ class PlanHITLState(TypedDict):
 
 
 class PlanAgent(BaseAgent):
+    description: str = "用于对任务进行整体规划"
+
     def __init__(self, llm: LLM, progress_store: SQLiteStore | None = None, **sub_agents):
         super().__init__(llm=llm, progress_store=progress_store, sub_agent=sub_agents)
         self.node_name = "plan"
 
-    async def run(self, query: str, runner: RunTime, message: Message, tool_manager: ToolManager, run_id: str) -> Plan:
+    async def run(
+        self, query: str, runner: RunTime, message: Message, tool_manager: ToolManager, run_id: str, *args, **kwargs
+    ) -> Plan:
         """
         Plan with LangGraph HITL:
         - When plan lacks required info, graph interrupts
@@ -88,10 +91,8 @@ class PlanAgent(BaseAgent):
             f"- {skill.server_name}.{skill.tool_name}: {skill.tool_description}" for skill in tool_manager.list_skills()
         ]
 
-        system_prompt = PLAN_SYSTEM_PROMPT.format(tools='\n'.join(tools))
-
         message.reset_context()
-        message.context.append({"role": "system", "content": system_prompt})
+        message.context.append({"role": "system", "content": PLAN_SYSTEM_PROMPT.format(tools='\n'.join(tools))})
         return message
 
     def parse_result(self, result: dict) -> Plan:
@@ -100,7 +101,6 @@ class PlanAgent(BaseAgent):
         except (json.JSONDecodeError, ValidationError) as e:
             plan = Plan(tasks=result, info_error=None, error=str(e))
 
-        logger.debug(f"[Walnut]Parsed plan: {plan}")
         return plan
 
     async def _plan_once(self, query: str, runner: RunTime, tool_manager: ToolManager) -> Plan:

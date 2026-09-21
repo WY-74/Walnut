@@ -2,6 +2,52 @@
 
 ## Overview
 
+```mermaid
+flowchart TB
+    User[User] --> App[main.py / CLI]
+    App --> Main[MainAgent]
+
+    subgraph Orchestration[Agent Orchestration]
+        direction LR
+        Main --> Plan[PlanAgent]
+        Main --> Eval[EvaluatorAgent]
+        Main --> Tool[ToolCallAgent]
+    end
+
+    Plan -. Plan Artifact .-> Main
+    Eval -. Evaluation Artifact .-> Main
+    Tool -. Execution Artifact .-> Main
+
+    Main --> Result[Final Result]
+    Result --> User
+
+    subgraph Infrastructure[Infrastructure]
+        direction LR
+
+        subgraph Tools[Tool System]
+            direction TB
+            ToolManager[ToolManager]
+            Skills[Skills]
+            MCP[MCP Servers]
+            ToolManager --> Skills
+            ToolManager --> MCP
+            Skills -. Dependency .-> MCP
+        end
+
+        subgraph Shared[Shared Components]
+            direction TB
+            Runtime[RunTime + LLM]
+            Artifacts[ArtifactStore]
+            Progress[SQLiteStore]
+        end
+    end
+
+    Tool --> ToolManager
+
+    Result ~~~ ToolManager
+    MCP ~~~ Runtime
+```
+
 ## Configure settings.json
 - mcpServers
     - mcp server name
@@ -22,13 +68,3 @@ Note: The token content should not be written in plaintext, otherwise it will be
 
 ## Run
 `python ~/main.py`
-
-## TODO:
-1. plan时可以连同Agent调用一同给出，就可以随意扩展Agent了
-5. 和日志优化 # HERE
-6. Plan检测
-8. finish node 的时候是不是塞入整个message更好
-9. 由于在runtime和agent流程中发生错误会直接raise，因此对于子Agent在数据库中的node_status为空，我们不需要记录status, 当raise之后依据run_id将所有为空的status设置成0即可
-10. pydantic 和 dataclasses
-11. 任务异常之后的数据还原，例如已经存储到数据库，但后续任务失败
-

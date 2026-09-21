@@ -12,6 +12,8 @@ logger = configure_logging("BaseAgent")
 
 
 class BaseAgent:
+    description: str = ""
+
     def __init__(self, llm: LLM, progress_store: SQLiteStore | None = None, **sub_agents):
         self.llm = llm
         self.progress_store = progress_store

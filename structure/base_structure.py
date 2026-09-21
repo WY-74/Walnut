@@ -13,9 +13,21 @@ class ActionPayload(BaseModel):
     tool_call: list[Tool] | None
 
 
+class MainActionResult(BaseModel):
+    artifact_id: str
+    data: str
+    error: str | None = None
+
+
+class AgentPayload(BaseModel):
+    agent: str
+    task: str
+    references: list[str] = []
+
+
 class ReAct(BaseModel):
     thought: str
-    action: ActionPayload | None
+    action: ActionPayload | AgentPayload | None
     results: Any | None
     error: str | None = None
 
