@@ -5,12 +5,12 @@ from utils.logging_setup import configure_logging
 from core.llm import LLM
 from core.message import Message
 from core.tool_manager import ToolManager
-from core.agent import MainAgent, PlanAgent, ToolCallAgent
+from core.agent import MainAgent, PlanAgent, ToolCallAgent, EvaluatorAgent
 from core.agent.runtime import RunTime
 from utils.sqlite_store import SQLiteStore
 from utils.tui import run_cli, show_boot_screen, ask_query, show_bye, show_result, show_error
 
-logger = configure_logging("main")
+logger = configure_logging("Main")
 
 
 def init_walunt(settings: dict) -> tuple[LLM, RunTime, ToolManager, Message, SQLiteStore, dict]:
@@ -20,6 +20,8 @@ def init_walunt(settings: dict) -> tuple[LLM, RunTime, ToolManager, Message, SQL
     tool_manager = ToolManager()
     message = Message()
     progress_store = SQLiteStore(db_path=settings.get("sqlite_path", "logs/progress.db"))
+
+    logger.info(f"[Walnut]Initialized Walnut with settings.")
 
     show_boot_screen(version=settings.get("version", ""), model=settings.get("model", ""))
     return (
@@ -34,15 +36,19 @@ def init_walunt(settings: dict) -> tuple[LLM, RunTime, ToolManager, Message, SQL
 
 async def _start_server() -> None:
     settings = load_settings()
-    logger.info(f"Loaded raw settings: {settings}")
-
     llm, runner, tool_manager, message, progress_store, settings = init_walunt(settings)
 
     plan_agent = PlanAgent(llm=llm, progress_store=progress_store)
+    evaluator_agent = EvaluatorAgent(llm=llm, progress_store=progress_store)
     toolcall_agent = ToolCallAgent(llm=llm, progress_store=progress_store)
-    main_agent = MainAgent(llm=llm, progress_store=progress_store, plan_agent=plan_agent, toolcall_agent=toolcall_agent)
+    main_agent = MainAgent(
+        llm=llm,
+        progress_store=progress_store,
+        plan_agent=plan_agent,
+        toolcall_agent=toolcall_agent,
+        evaluator_agent=evaluator_agent,
+    )
 
-    queries = []
     async with tool_manager.lifespan(settings):
         while True:
             try:
@@ -53,23 +59,19 @@ async def _start_server() -> None:
                     show_bye()
                     break
 
-                queries.append(query)
-                query = "\n".join(queries)
                 run_id = progress_store.start_run(query)
 
                 try:
-                    result, status_code = await main_agent.run(
+                    result = await main_agent.run(
                         query=query, runner=runner, message=message, tool_manager=tool_manager, run_id=run_id
                     )
-                    if status_code == 1:
-                        queries.clear()  # Clear queries on successful completion
-
-                    progress_store.finish_run(run_id, status_code)
-                    # show_result(result)
+                    progress_store.finish_run(run_id, 1)
+                    show_result(result)
                 except Exception as e:
                     progress_store.finish_run(run_id, 0)
                     show_error(e)
-                    raise
+                finally:
+                    message.clear_plan()
 
             except (KeyboardInterrupt, EOFError):
                 show_bye()
@@ -77,10 +79,15 @@ async def _start_server() -> None:
 
 
 def main():
-    def _wapper():
-        asyncio.run(_start_server())
+    try:
 
-    run_cli(_wapper)
+        def _wapper():
+            asyncio.run(_start_server())
+
+        run_cli(_wapper)
+    except Exception as e:
+        logger.error(f"[Walnut]An error occurred: {e}")
+        show_error(e)
 
 
 if __name__ == "__main__":

@@ -2,6 +2,52 @@
 
 ## Overview
 
+```mermaid
+flowchart TB
+    User[User] --> App[main.py / CLI]
+    App --> Main[MainAgent]
+
+    subgraph Orchestration[Agent Orchestration]
+        direction LR
+        Main --> Plan[PlanAgent]
+        Main --> Eval[EvaluatorAgent]
+        Main --> Tool[ToolCallAgent]
+    end
+
+    Plan -. Plan Artifact .-> Main
+    Eval -. Evaluation Artifact .-> Main
+    Tool -. Execution Artifact .-> Main
+
+    Main --> Result[Final Result]
+    Result --> User
+
+    subgraph Infrastructure[Infrastructure]
+        direction LR
+
+        subgraph Tools[Tool System]
+            direction TB
+            ToolManager[ToolManager]
+            Skills[Skills]
+            MCP[MCP Servers]
+            ToolManager --> Skills
+            ToolManager --> MCP
+            Skills -. Dependency .-> MCP
+        end
+
+        subgraph Shared[Shared Components]
+            direction TB
+            Runtime[RunTime + LLM]
+            Artifacts[ArtifactStore]
+            Progress[SQLiteStore]
+        end
+    end
+
+    Tool --> ToolManager
+
+    Result ~~~ ToolManager
+    MCP ~~~ Runtime
+```
+
 ## Configure settings.json
 - mcpServers
     - mcp server name
@@ -22,4 +68,3 @@ Note: The token content should not be written in plaintext, otherwise it will be
 
 ## Run
 `python ~/main.py`
-

@@ -36,12 +36,13 @@
             "skill_path": ".agents/skills/local_database",
             "need_tools": ["sqlite"]
         },
-        "note": {
-            "skill_path": ".agents/skills/note",
-            "need_tools": ["notion"]
+        "verify_strategy": {
+            "skill_path": ".agents/skills/verify_strategy",
+            "need_tools": ["norm", "sqlite"]
         }
     },
     "version": "dev",
+    "log_level": "debug",
     "model": "deepseek-v4-pro",
     "runtime_max_loops": 10,
     "sqlite_path": "logs/progress.db"

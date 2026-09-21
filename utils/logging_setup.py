@@ -1,4 +1,5 @@
 import os
+import json
 import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -6,14 +7,15 @@ from pathlib import Path
 _configured = False
 
 
-def configure_logging(service_name: str, log_file: str | None = None):
+def configure_logging(service_name: str, log_file: str | None = None, settings: str = "settings.json"):
     global _configured
 
     logger = logging.getLogger()
     if _configured:
         return logging.getLogger(service_name)
 
-    level = logging.INFO
+    level = json.loads(Path(settings).read_text(encoding="utf-8"))["log_level"]
+    level = getattr(logging, level.upper(), logging.INFO)
 
     if log_file is None:
         log_file = os.getenv("LOG_FILE", "logs/walnut.log")

@@ -14,6 +14,7 @@ class SQLiteStore:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = Lock()
         self._init_schema()
+        logger.info(f"[Walnut]Initialized SQLiteStore with DB path: {self.db_path}")
 
     def _now_iso(self) -> str:
         return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -130,7 +131,22 @@ class SQLiteStore:
                 [now, final_context, status_code, run_id, node],
             )
 
-    def search_pe_ttm(self, stock_code: str, start_date: str, end_date: str) -> list[dict]:
+    def search_pe_ttm(self, stock_code: str, date: str) -> list[dict]:
+        with self._lock, self._connect() as conn:
+            cur = conn.execute(
+                """
+                SELECT
+                    stock_code,
+                    ROUND(CAST(pe_ttm_x100 AS REAL) / 100.0, 2) AS pe_ttm_percent,
+                    date
+                FROM pe_ttm
+                WHERE stock_code = ? AND date = ?
+                """,
+                [stock_code, date],
+            )
+            return [dict(row) for row in cur.fetchall()]
+
+    def search_pe_ttms(self, stock_code: str, start_date: str, end_date: str) -> list[dict]:
         with self._lock, self._connect() as conn:
             cur = conn.execute(
                 """

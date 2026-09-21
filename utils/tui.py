@@ -4,8 +4,10 @@ from rich.panel import Panel
 from rich.text import Text
 from rich.table import Table
 from rich.prompt import Prompt
-from pyfiglet import Figlet
 from rich.align import Align
+from rich.live import Live
+from pyfiglet import Figlet
+from collections import deque
 
 console = Console()
 
@@ -53,6 +55,11 @@ def ask_query() -> str:
     return Prompt.ask("[bold white]>[/bold white] Type message or command").strip()
 
 
+def ask_followup(question: str) -> str:
+    console.print(f"[bold #8A5A34]WALNUT[/bold #8A5A34]: {question}")
+    return Prompt.ask("[bold #EAB676]>[/bold #EAB676] 请补充必要信息").strip()
+
+
 def show_bye() -> None:
     console.print("[bold #8A5A34]WALNUT[/bold #8A5A34]: Bye!")
 
@@ -63,3 +70,38 @@ def show_result(text: str) -> None:
 
 def show_error(err: Exception) -> None:
     console.print(f"[bold red]Error[/bold red]: {err}")
+
+
+class RuntimeWindow:
+    def __init__(self, caller: str = "WALNUT", max_lines: int = 8) -> None:
+        self.caller = caller
+        self.lines: deque[str] = deque(maxlen=max_lines)
+        self.live = Live(
+            self._render(),
+            console=console,
+            refresh_per_second=8,
+            transient=True,
+        )
+
+    def start(self) -> None:
+        self.live.start()
+
+    def stop(self) -> None:
+        self.live.stop()
+
+    def write(self, message: str) -> None:
+        self.lines.append(message)
+        self.live.update(self._render())
+
+    def _render(self) -> Panel:
+        content = Text(
+            "\n".join(self.lines) or "Waiting for runtime...",
+            style="dim #9CA3AF",
+        )
+        return Panel(
+            content,
+            title=f"[dim #9CA3AF]{self.caller} Runtime[/dim #9CA3AF]",
+            border_style="#6B7280",
+            height=11,
+            padding=(0, 1),
+        )

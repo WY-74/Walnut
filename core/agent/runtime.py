@@ -1,16 +1,13 @@
+from pydantic import BaseModel
 from typing import Any, Awaitable, Callable
-
-from json import JSONDecodeError
-from pydantic import ValidationError
 
 from core.llm import LLM
 from core.message import Message
-from core.prompts.error import PARSE_LLM_RESPONSE_ERROR, RESULT_HANDLER_ERROR, ACTION_HANDLER_ERROR
-from structure.llm_response import LLMResponse
+from core.prompts.error import PARSE_LLM_RESPONSE_ERROR, RESULT_HANDLER_ERROR, ACTION_EMPTY_ERROR, ACTION_HANDLER_ERROR
+from structure.base_structure import ReAct, AgentPayload, ActionPayload
 from utils.logging_setup import configure_logging
-from utils.tui import show_result
 
-logger = configure_logging("runtime")
+logger = configure_logging("RunTime")
 
 ActionHandler = Callable[[str, str], Awaitable[Any]]
 ResultHandler = Callable[[str, str], Awaitable[Any]]
@@ -19,39 +16,56 @@ ResultHandler = Callable[[str, str], Awaitable[Any]]
 class RunTime:
     def __init__(self, max_loops: int = 5):
         self.max_loops = max_loops
+        logger.info(f"[Walnut]RunTime initialized with max_loops: {self.max_loops}")
 
     async def run(
-        self, message: Message, llm: LLM, result_handler: ResultHandler, action_handler: ActionHandler | None = None
-    ) -> tuple[str, int]:
-        response: LLMResponse
-        logger.info(f"Starting runtime loop")
-
+        self,
+        message: Message,
+        llm: LLM,
+        result_handler: ResultHandler,
+        action_handler: ActionHandler | None = None,
+        caller: str = "WALNUT",
+    ) -> BaseModel:
         for i in range(self.max_loops):
-            logger.info(f"RunTime loop: {i + 1}")
-
-            response = await llm.response_context(message.context)
+            # Get response from the LLM based on the current message context
+            response: ReAct = await llm.response_context(message.context)
             message.add_message("assistant", response.model_dump_json())
-            if response.available is False:
+            if response.error:
                 message.add_message("user", PARSE_LLM_RESPONSE_ERROR)
                 continue
 
-            if response.results is not None:
-                try:
-                    result = result_handler(response.results)
-                    show_result(result)
-                    return result, 1
-                except (ValidationError, JSONDecodeError) as e:
+            logger.debug(f"{caller}-loop{i + 1}-response: {response.model_dump_json()}")
+            print(f"{caller}-loop{i + 1}-response: {response.model_dump_json()}\n")
+
+            # Handle results from the LLM response
+            if response.results:
+                result: BaseModel = result_handler(response.results)
+                message.add_message("assistant", result.model_dump_json())
+                if result.error:  # Any output will include an `error` field.
                     message.add_message("user", RESULT_HANDLER_ERROR)
-                    logger.warning(f"Result handler failed: {e}")
                     continue
 
-            action = response.action if response.action else None
-            observation = await action_handler(action)
+                logger.debug(f"{caller}-loop{i + 1}-result: {result.model_dump_json()}")
+                print(f"{caller}-loop{i + 1}-result: {result.model_dump_json()}\n")
+                return result
+
+            # Handle action from the LLM response
+            if not response.action:
+                message.add_message("user", ACTION_EMPTY_ERROR)
+                continue
+            action: AgentPayload | ActionPayload = response.action
+            observation: BaseModel = await action_handler(action)
+
+            logger.debug(f"{caller}-loop{i + 1}-observation: {observation.model_dump_json()}")
+            print(f"{caller}-loop{i + 1}-observation: {observation.model_dump_json()}\n")
+
             if observation is None:
                 message.add_message("user", ACTION_HANDLER_ERROR)
                 continue
+            if observation.error:
+                message.add_message("user", f"Observation error: {observation.error}")
+                continue
 
-            message.add_message("user", f"Observation: {observation}")
+            message.add_message("user", f"Observation: {observation.model_dump_json()}")
 
-        result = result_handler("[任务步数不足]很遗憾未能完成任务!")
-        return result, 0  # Return status code 0 for failure
+        raise Exception("[任务步数不足]很遗憾未能完成任务!")
