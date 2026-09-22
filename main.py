@@ -1,4 +1,5 @@
 import asyncio
+from langfuse import get_client, propagate_attributes
 
 from utils.settings import load_settings
 from utils.logging_setup import configure_logging
@@ -13,7 +14,12 @@ from utils.tui import run_cli, show_boot_screen, ask_query, show_bye, show_resul
 logger = configure_logging("Main")
 
 
-def init_walunt(settings: dict) -> tuple[LLM, RunTime, ToolManager, Message, SQLiteStore, dict]:
+def init_walnut(settings: dict):
+    langfuse = get_client()
+    if not langfuse.auth_check():
+        logger.error("[Walnut] Langfuse authentication failed.")
+        raise RuntimeError("请检查 Langfuse 的认证信息后再重启")
+
     llm = LLM(settings["model"])
     runner = RunTime(max_loops=settings.get("runtime_max_loops", 5))
 
@@ -21,10 +27,9 @@ def init_walunt(settings: dict) -> tuple[LLM, RunTime, ToolManager, Message, SQL
     message = Message()
     progress_store = SQLiteStore(db_path=settings.get("sqlite_path", "logs/progress.db"))
 
-    logger.info(f"[Walnut]Initialized Walnut with settings.")
-
     show_boot_screen(version=settings.get("version", ""), model=settings.get("model", ""))
     return (
+        langfuse,
         llm,
         runner,
         tool_manager,
@@ -36,7 +41,7 @@ def init_walunt(settings: dict) -> tuple[LLM, RunTime, ToolManager, Message, SQL
 
 async def _start_server() -> None:
     settings = load_settings()
-    llm, runner, tool_manager, message, progress_store, settings = init_walunt(settings)
+    langfuse, llm, runner, tool_manager, message, progress_store, settings = init_walnut(settings)
 
     plan_agent = PlanAgent(llm=llm, progress_store=progress_store)
     evaluator_agent = EvaluatorAgent(llm=llm, progress_store=progress_store)
@@ -59,12 +64,22 @@ async def _start_server() -> None:
                     show_bye()
                     break
 
-                run_id = progress_store.start_run(query)
-
                 try:
-                    result = await main_agent.run(
-                        query=query, runner=runner, message=message, tool_manager=tool_manager, run_id=run_id
-                    )
+                    run_id = progress_store.start_run(query)
+                    with propagate_attributes(
+                        session_id=run_id,
+                        metadata={"run_id": run_id},
+                        tags=["walnut", "cli"],
+                    ):
+                        with langfuse.start_as_current_observation(
+                            as_type="span",
+                            name="walnut",
+                            input={"query": query},
+                        ) as trace:
+                            result = await main_agent.run(
+                                query=query, runner=runner, message=message, tool_manager=tool_manager, run_id=run_id
+                            )
+                            trace.update(output={"result": result})
                     progress_store.finish_run(run_id, 1)
                     show_result(result)
                 except Exception as e:
@@ -72,6 +87,7 @@ async def _start_server() -> None:
                     show_error(e)
                 finally:
                     message.clear_plan()
+                    langfuse.flush()
 
             except (KeyboardInterrupt, EOFError):
                 show_bye()
@@ -86,7 +102,6 @@ def main():
 
         run_cli(_wapper)
     except Exception as e:
-        logger.error(f"[Walnut]An error occurred: {e}")
         show_error(e)
 
 

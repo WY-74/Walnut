@@ -9,6 +9,7 @@ logger = configure_logging("Message")
 class Message:
     def __init__(self):
         self.context: list[dict[str, str]] = []  # 当前对话记录
+        logger.info("[Walnut] Message initialized.")
 
     def reset_context(self):
         self.context = []

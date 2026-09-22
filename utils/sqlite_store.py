@@ -14,7 +14,7 @@ class SQLiteStore:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = Lock()
         self._init_schema()
-        logger.info(f"[Walnut]Initialized SQLiteStore with DB path: {self.db_path}")
+        logger.info(f"[Walnut] SQLiteStore initialized with DB path: {self.db_path}")
 
     def _now_iso(self) -> str:
         return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -75,7 +75,7 @@ class SQLiteStore:
                 "INSERT INTO tasks(run_id, query, created_at) VALUES (?, ?, ?)",
                 [run_id, query, now],
             )
-        logger.info(f"Started new run with ID: {run_id} for query: {query}")
+        logger.info(f"[Walnut] Started new run with ID: {run_id}")
         return run_id
 
     def finish_run(self, run_id: str, status_code: int | None = None) -> None:
@@ -116,6 +116,7 @@ class SQLiteStore:
                 """,
                 [run_id, node, now],
             )
+            logger.info(f"[Walnut] Started new node '{node}' for run ID: {run_id}")
             return int(cur.lastrowid)
 
     def finish_node(self, run_id: str, node: str, final_context: str | dict, status_code: int) -> None:

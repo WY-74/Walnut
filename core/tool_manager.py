@@ -17,6 +17,7 @@ class ToolManager:
         self.sessions: dict[str, ClientSession] = {}
         self.mcp_tools: dict[str, ToolSpec] = {}
         self.skills: dict[str, SkillServerSpec] = {}
+        logger.info("[Walnut] ToolManager initialized.")
 
     def _load_specs(self, settings: Dict[str, Any]) -> tuple[list[MCPServerSpec], list[SkillServerSpec]]:
         # MCP
@@ -31,6 +32,8 @@ class ToolManager:
                     mcp_env=cfg.get("env", {}),
                 )
             )
+        logger.info("[Walnut] Loaded MCP server specs.")
+        # logger.debug(f"[Walnut] Loaded MCP server specs: {mcp_servers_specs}")
 
         # Skill
         skills = settings.get("skills", {})
@@ -41,9 +44,8 @@ class ToolManager:
                     skill_name=name, skill_path=cfg["skill_path"], skill_need_tools=cfg.get("need_tools", [])
                 )
             )
-
-        logger.info(f"Loaded MCP server specs: {mcp_servers_specs}")
-        logger.info(f"Loaded Skills specs: {skills_specs}")
+        logger.info("[Walnut] Loaded Skills specs.")
+        # logger.debug(f"[Walnut] Loaded Skills specs: {skills_specs}")
 
         return mcp_servers_specs, skills_specs
 
@@ -58,7 +60,8 @@ class ToolManager:
             self.mcp_tools[full_name] = ToolSpec(
                 server_name=spec.mcp_server_name, tool_name=tool.name, tool_description=tool.description or ""
             )
-            logger.info(f"Registered tool: {full_name}")
+            logger.debug(f"[Walnut] Registered MCP: {full_name}")
+        logger.info(f"[Walnut] Total MCP registered: {len(self.mcp_tools)}")
 
     @asynccontextmanager
     async def _open_mcp_session(self, command: str, args: list[str], env: dict[str, str] | None = None):
@@ -109,7 +112,8 @@ class ToolManager:
             )
 
             self.skills[spec.skill_name] = resolved
-            logger.info(f"Registered skill: skill.{spec.skill_name}")
+            logger.debug(f"[Walnut] Registered skill: skill.{spec.skill_name}")
+        logger.info(f"[Walnut] Total skills registered: {len(self.skills)}")
 
     def _read_skill_markdown(self, skill_path: str) -> tuple[str, str]:
         data = (Path(skill_path) / "skill.md").read_text(encoding="utf-8")

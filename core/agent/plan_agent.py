@@ -1,4 +1,5 @@
 import json
+from langfuse import get_client
 from typing import TypedDict, Any
 from pydantic import ValidationError
 from langgraph.graph import START, END, StateGraph
@@ -31,6 +32,7 @@ class PlanAgent(BaseAgent):
     def __init__(self, llm: LLM, progress_store: SQLiteStore | None = None, **sub_agents):
         super().__init__(llm=llm, progress_store=progress_store, sub_agent=sub_agents)
         self.node_name = "plan"
+        logger.info(f"[Walnut] PlanAgent initialized.")
 
     async def run(
         self, query: str, runner: RunTime, message: Message, tool_manager: ToolManager, run_id: str, *args, **kwargs
@@ -41,6 +43,8 @@ class PlanAgent(BaseAgent):
         - Human provides missing info
         - Graph resumes and replans until success
         """
+        logger.info(f"[Walnut-PlanAgent] PlanAgent running for run ID: {run_id}")
+        logger.debug(f"[Walnut-PlanAgent] PlanAgent running with: {locals()}")
         self.progress_store.start_node(run_id=run_id, node=self.node_name)
 
         graph = self._build_hitl_graph(runner=runner, tool_manager=tool_manager)
@@ -50,6 +54,7 @@ class PlanAgent(BaseAgent):
             "pending_question": None,
             "plan": None,
         }
+        logger.info("[Walnut-PlanAgent] Build HITL graph")
         try:
             while True:
                 result = await graph.ainvoke(next_input, config=graph_config)
@@ -64,6 +69,9 @@ class PlanAgent(BaseAgent):
                         self.progress_store.finish_node(
                             run_id=run_id, node=self.node_name, final_context=final_context, status_code=0
                         )
+                        logger.error(
+                            f"[Walnut-PlanAgent] Missing information and no answer provided for question: {question}"
+                        )
                         raise Exception(final_context)
 
                     next_input = Command(resume=answer)
@@ -75,10 +83,12 @@ class PlanAgent(BaseAgent):
                     self.progress_store.finish_node(
                         run_id=run_id, node=self.node_name, final_context=final_context, status_code=0
                     )
+                    logger.error(f"[Walnut-PlanAgent] No valid plan returned from HITL process")
                     raise Exception(final_context)
 
                 plan = self.parse_result(plan)
                 self.progress_store.finish_node(run_id=run_id, node=self.node_name, final_context=plan, status_code=1)
+                logger.info(f"[Walnut-PlanAgent] Finished running for run ID: {run_id}")
                 return plan
 
         except Exception as e:
@@ -93,6 +103,7 @@ class PlanAgent(BaseAgent):
 
         message.reset_context()
         message.context.append({"role": "system", "content": PLAN_SYSTEM_PROMPT.format(tools='\n'.join(tools))})
+        logger.info(f"[Walnut-PlanAgent] Initialized message")
         return message
 
     def parse_result(self, result: dict) -> Plan:
@@ -101,6 +112,7 @@ class PlanAgent(BaseAgent):
         except (json.JSONDecodeError, ValidationError) as e:
             plan = Plan(tasks=result, info_error=None, error=str(e))
 
+        logger.info(f"[Walnut-PlanAgent] Parsed result")
         return plan
 
     async def _plan_once(self, query: str, runner: RunTime, tool_manager: ToolManager) -> Plan:
@@ -108,8 +120,16 @@ class PlanAgent(BaseAgent):
 
         message = self.init_message(Message(), tool_manager)
         message.add_message("user", query)
+        with get_client().start_as_current_observation(
+            as_type="span",
+            name="agent.plan",
+            input={"query": query},
+        ) as span:
+            result = await runner.run(
+                message, self.llm, result_handler=self.parse_result, caller=self.__class__.__name__
+            )
+            span.update(output=result.model_dump())
 
-        result = await runner.run(message, self.llm, result_handler=self.parse_result, caller=self.__class__.__name__)
         return result
 
     def _build_hitl_graph(self, runner: RunTime, tool_manager: ToolManager):

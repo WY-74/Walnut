@@ -9,7 +9,10 @@ from rich.live import Live
 from pyfiglet import Figlet
 from collections import deque
 
+from utils.logging_setup import configure_logging
+
 console = Console()
+logger = configure_logging("TUI")
 
 
 def _build_logo(logo_width: int) -> Text:
@@ -52,7 +55,9 @@ def show_boot_screen(version: str, model: str) -> Table:
 
 
 def ask_query() -> str:
-    return Prompt.ask("[bold white]>[/bold white] Type message or command").strip()
+    query = Prompt.ask("[bold white]>[/bold white] Type message or command").strip()
+    logger.info(f"[Walnut] User query: {query}")
+    return query
 
 
 def ask_followup(question: str) -> str:
