@@ -1,27 +1,49 @@
 {
     "mcpServers": {
-        "norm": {"command": "D:/projects/Walnut/walnut/Scripts/python.exe", "args": [".agents/mcp_tools/norm.py"]},
+        "norm": {
+            "command": "D:/projects/Walnut/walnut/Scripts/python.exe",
+            "args": [".agents/mcp_tools/norm.py"]
+        },
         "lixinger": {
             "command": "D:/projects/Walnut/walnut/Scripts/python.exe",
             "args": [".agents/mcp_tools/lixinger.py"],
-            "env": {"LIXINGER_TOKEN": "${LIXINGER_TOKEN}"},
+            "env": {
+                "LIXINGER_TOKEN": "${LIXINGER_TOKEN}"
+            }
         },
-        "sqlite": {"command": "D:/projects/Walnut/walnut/Scripts/python.exe", "args": [".agents/mcp_tools/sqlite.py"]},
-        "notion": {
+        "sqlite": {
+            "command": "D:/projects/Walnut/walnut/Scripts/python.exe",
+            "args": [".agents/mcp_tools/sqlite.py"]
+        },
+        "notion":{
             "command": "npx",
             "args": ["-y", "@notionhq/notion-mcp-server"],
-            "env": {"NOTION_TOKEN": "${NOTION_TOKEN}"},
-        },
+            "env": {
+                "NOTION_TOKEN": "${NOTION_TOKEN}"
+            }
+        }
     },
     "skills": {
-        "norm": {"skill_path": ".agents/skills/norm", "need_tools": ["norm"]},
-        "lixinger": {"skill_path": ".agents/skills/lixinger", "need_tools": ["lixinger"]},
-        "local_database": {"skill_path": ".agents/skills/local_database", "need_tools": ["sqlite"]},
-        "verify_strategy": {"skill_path": ".agents/skills/verify_strategy", "need_tools": ["norm", "sqlite"]},
+        "norm": {
+            "skill_path": ".agents/skills/norm",
+            "need_tools": ["norm"]
+        },
+        "lixinger": {
+            "skill_path": ".agents/skills/lixinger",
+            "need_tools": ["lixinger"]
+        },
+        "local_database": {
+            "skill_path": ".agents/skills/local_database",
+            "need_tools": ["sqlite"]
+        },
+        "verify_strategy": {
+            "skill_path": ".agents/skills/verify_strategy",
+            "need_tools": ["norm", "sqlite"]
+        }
     },
     "version": "dev",
     "log_level": "debug",
     "model": "deepseek-v4-pro",
     "runtime_max_loops": 10,
-    "sqlite_path": "logs/progress.db",
+    "sqlite_path": "logs/progress.db"
 }
