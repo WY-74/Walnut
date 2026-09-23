@@ -1,4 +1,4 @@
-from typing import Callable, Dict
+from typing import Callable, Dict, Any
 
 from core.llm import LLM
 from core.message import Message
@@ -33,6 +33,20 @@ class BaseAgent:
         self, query: str, runner: RunTime, message: Message, tool_manager: ToolManager, run_id: str, *args, **kwargs
     ):
         raise NotImplementedError("Subclasses must implement the run method.")
+
+    async def run_without_runtime(self, query: str, extra: Any, *args, **kwargs):
+        """
+        Run the agent without a runtime.
+        Suitable for single-turn Q&A tasks, avoiding the consumption associated with lengthy prompts.
+        The output maintains a structure consistent with the Agent's `parse_result`.
+        """
+        message = Message()
+        query = f"{query}结果以json格式返回\n补充信息:\n{str(extra)}"
+        # When response_format is set to json_object, the prompt must contain the word "json" (in any form)
+
+        message.add_message("user", query)
+        result: str = await self.llm.response_context(message.context, with_react=False)
+        return self.parse_result(result)
 
     def handle_action(self, *args, **kwargs) -> Callable:
         async def handler(action: ActionPayload):

@@ -35,7 +35,15 @@ class PlanAgent(BaseAgent):
         logger.info(f"[Walnut] PlanAgent initialized.")
 
     async def run(
-        self, query: str, runner: RunTime, message: Message, tool_manager: ToolManager, run_id: str, *args, **kwargs
+        self,
+        query: str,
+        runner: RunTime,
+        message: Message,
+        tool_manager: ToolManager,
+        run_id: str,
+        references: str,
+        *args,
+        **kwargs,
     ) -> Plan:
         """
         Plan with LangGraph HITL:
@@ -49,6 +57,8 @@ class PlanAgent(BaseAgent):
 
         graph = self._build_hitl_graph(runner=runner, tool_manager=tool_manager)
         graph_config = {"configurable": {"thread_id": run_id}}
+        if references:
+            query = self._build_replan_query(query, references=references)
         next_input: dict | Command = {
             "query": query,
             "pending_question": None,
@@ -118,7 +128,7 @@ class PlanAgent(BaseAgent):
     async def _plan_once(self, query: str, runner: RunTime, tool_manager: ToolManager) -> Plan:
         result: Plan
 
-        message = self.init_message(Message(), tool_manager)
+        message: Message = self.init_message(Message(), tool_manager)
         message.add_message("user", query)
         with get_client().start_as_current_observation(
             as_type="span",
@@ -205,3 +215,11 @@ class PlanAgent(BaseAgent):
         if not supplement:
             return original
         return f"{original}\n补充信息: {supplement}"
+
+    def _build_replan_query(self, query: str, references: list[str]) -> str:
+        """
+        Build a replan query that includes the original query and references.
+        """
+        references = "\n\n".join(references)
+        query = f"当前已有一份计划, 需要将其依据评判结果重新生成计划, 原计划与评判结果如下:\n\n{references}"
+        return query

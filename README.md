@@ -83,3 +83,4 @@ Note: The token content should not be written in plaintext, otherwise it will be
 9. assets有问题，暂时已pass, 当前assets在外部：assets=None tool_call=[Tool(target='获取恒生科技指数对应的唯一代码', name='skill.lixinger', args={'stockname': '恒生科技指数'}), Tool(target='获取当前日期以计算昨天日期', name='skill.norm', args={'data': '当前日期'})]
 10. 项目结构整理
 11. 当前ToolCall拥有所有工具权限，后面考虑是否拆出来让不同Agent具备不同权限，例如DataBase的Agent只有数据库工具的权限，等等
+12. Jev/laya

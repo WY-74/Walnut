@@ -60,7 +60,10 @@ class ToolCallAgent(BaseAgent):
                 name=f"agent.toolcall-task{step}",
                 input={"query": query},
             ) as span:
-                if tools and len(tools) == 1:
+                if not tools:
+                    result: PlainText = await self.run_without_runtime(task.detail, tmp)
+                    result = result.result
+                elif tools and len(tools) == 1:
                     result: PlainText = await self._run_single_step(
                         tools[0], runner, Message(), tool_manager, run_id, tmp
                     )

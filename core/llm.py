@@ -21,7 +21,7 @@ class LLM:
 
         logger.info(f"[Walnut] LLM initialized with model: {self.model}")
 
-    async def response_context(self, messages) -> dict:
+    async def response_context(self, messages, with_react: bool = True):
         response = await self.llm.chat.completions.create(
             model=self.model,
             messages=messages,
@@ -30,7 +30,10 @@ class LLM:
             reasoning_effort="high",
             extra_body={"thinking": {"type": "enabled"}},
         )
-        return self.parse_response(response.choices[0].message.content)
+        if with_react:
+            return self.parse_response(response.choices[0].message.content)
+        else:
+            return response.choices[0].message.content
 
     def parse_response(self, response: str) -> ReAct:
         try:
