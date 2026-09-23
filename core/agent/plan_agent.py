@@ -58,6 +58,12 @@ class PlanAgent(BaseAgent):
         graph = self._build_hitl_graph(runner=runner, tool_manager=tool_manager)
         graph_config = {"configurable": {"thread_id": run_id}}
         if references:
+            if len(references) != 2:
+                final_context = "需要提供旧计划以及评判结果才可以完成重新规划"
+                self.progress_store.finish_node(
+                    run_id=run_id, node=self.node_name, final_context=final_context, status_code=0
+                )
+                return Plan(tasks=[], info_error=None, error=final_context)
             query = self._build_replan_query(query, references=references)
         next_input: dict | Command = {
             "query": query,
