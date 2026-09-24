@@ -147,7 +147,7 @@ class SQLiteStore:
             )
             return [dict(row) for row in cur.fetchall()]
 
-    def search_pe_ttms(self, stock_code: str, start_date: str, end_date: str) -> list[dict]:
+    def search_pe_ttms(self, stock_code: str, date: str, limit: int) -> list[dict]:
         with self._lock, self._connect() as conn:
             cur = conn.execute(
                 """
@@ -156,10 +156,11 @@ class SQLiteStore:
                     ROUND(CAST(pe_ttm_x100 AS REAL) / 100.0, 2) AS pe_ttm_percent,
                     date
                 FROM pe_ttm
-                WHERE stock_code = ? AND date BETWEEN ? AND ?
-                ORDER BY date ASC
+                WHERE stock_code = ? AND date <= ?
+                ORDER BY date DESC
+                LIMIT ?
                 """,
-                [stock_code, start_date, end_date],
+                [stock_code, date, limit],
             )
             return [dict(row) for row in cur.fetchall()]
 

@@ -4,41 +4,34 @@
             "command": "D:/projects/Walnut/walnut/Scripts/python.exe",
             "args": [".agents/mcp_tools/norm.py"]
         },
-        "lixinger": {
+        "data_from_lixinger": {
             "command": "D:/projects/Walnut/walnut/Scripts/python.exe",
-            "args": [".agents/mcp_tools/lixinger.py"],
+            "args": [".agents/mcp_tools/data_from_lixinger.py"],
             "env": {
                 "LIXINGER_TOKEN": "${LIXINGER_TOKEN}"
             }
         },
-        "sqlite": {
+        "data_from_local": {
             "command": "D:/projects/Walnut/walnut/Scripts/python.exe",
-            "args": [".agents/mcp_tools/sqlite.py"]
+            "args": [".agents/mcp_tools/data_from_local.py"]
         },
-        "notion":{
-            "command": "npx",
-            "args": ["-y", "@notionhq/notion-mcp-server"],
-            "env": {
-                "NOTION_TOKEN": "${NOTION_TOKEN}"
-            }
+        "strategy": {
+            "command": "D:/projects/Walnut/walnut/Scripts/python.exe",
+            "args": [".agents/mcp_tools/strategy.py"]
         }
     },
     "skills": {
         "norm": {
             "skill_path": ".agents/skills/norm",
-            "need_tools": ["norm"]
+            "need_tools": ["norm", "data_from_lixinger"]
         },
-        "lixinger": {
-            "skill_path": ".agents/skills/lixinger",
-            "need_tools": ["lixinger"]
-        },
-        "local_database": {
-            "skill_path": ".agents/skills/local_database",
-            "need_tools": ["sqlite"]
+        "data_from_lixinger": {
+            "skill_path": ".agents/skills/data_from_lixinger",
+            "need_tools": ["data_from_lixinger", "data_from_local"]
         },
         "verify_strategy": {
             "skill_path": ".agents/skills/verify_strategy",
-            "need_tools": ["norm", "sqlite"]
+            "need_tools": ["data_from_local", "strategy"]
         }
     },
     "version": "dev",

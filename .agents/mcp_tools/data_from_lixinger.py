@@ -3,12 +3,12 @@ import json
 import requests
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("Lixinger")
+mcp = FastMCP("DataFromLixinger")
 
 
 @mcp.tool(meta={"version": "1.0.0"})
 def fundamental(stockcode: str, date: str) -> str:
-    """获取指数基本面数据, 需要如下参数:
+    """获取某天指数PE-TTM信息, 需要如下参数:
     stockcode: 待查讯指数的唯一代码, 格式: "xxx"
     date: 查询日期, 格式: "YYYY-MM-DD"
     """

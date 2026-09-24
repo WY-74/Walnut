@@ -11,13 +11,13 @@ if str(ROOT_DIR) not in sys.path:
 
 from utils.sqlite_store import SQLiteStore
 
-mcp = FastMCP("Sqlite")
+mcp = FastMCP("DataFromLocal")
 
 
 @mcp.tool(meta={"version": "1.0.0"})
 def search_data(stockcode: str, date: str) -> str:
-    """获取某指数在特定日期的基本面数据, 需要如下参数:
-    - stockcode: 待查讯指数的唯一代码
+    """在本地数据库中获取指数在某日的基本面(PE-TTM)数据, 需要如下参数:
+    - stockcode: 待查讯指数的唯一代码, 格式: "xxx"
     - date: 查询日期, 格式: "YYYY-MM-DD"
     """
     sql = SQLiteStore()
@@ -25,21 +25,21 @@ def search_data(stockcode: str, date: str) -> str:
 
 
 @mcp.tool(meta={"version": "1.0.0"})
-def search_data_range(stockcode: str, start_time: str, end_time: str) -> str:
-    """获取一段时间内某指数基本面数据, 需要如下参数:
-    - stockcode: 待查讯指数的唯一代码
-    - start_time: 查询开始日期, 格式: "YYYY-MM-DD"
-    - end_time: 查询结束日期, 格式: "YYYY-MM-DD"
+def search_data_range(stockcode: str, date: str, limit: int) -> str:
+    """在本地数据库中获取指数在一段时间内的基本面(PE-TTM)数据, 需要如下参数:
+    - stockcode: 待查讯指数的唯一代码, 格式: "xxx"
+    - date: 查询日期节点, 格式: "YYYY-MM-DD"
+    - limit: 查询的记录条数限制(从指定日期向前查询), 格式: int
     """
     sql = SQLiteStore()
-    return json.dumps(sql.search_pe_ttms(stockcode, start_time, end_time))
+    return json.dumps(sql.search_pe_ttms(stockcode, date, limit))
 
 
 @mcp.tool(meta={"version": "1.0.0"})
 def add_data(stockcode: str, pe_ttm: float, date: str) -> str:
-    """添加指数基本面数据, 需要如下参数:
-    - stockcode: 待添加指数的唯一代码
-    - pe_ttm: 市盈率(TTM), 格式: float, 注意不要舍弃小数部分任何位
+    """向本地数据库中添加指数基本面(PE-TTM)数据, 需要如下参数:
+    - stockcode: 待添加指数的唯一代码, 格式: "xxx"
+    - pe_ttm: 市盈率(PE-TTM), 格式: float, 注意不要舍弃小数部分任何位
     - date: 数据对应的日期, 格式: "YYYY-MM-DD"
     """
     sql = SQLiteStore()
