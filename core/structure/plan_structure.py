@@ -1,10 +1,7 @@
 from pydantic import BaseModel
+from .base_structure import Tool
 
-
-class Tool(BaseModel):
-    target: str
-    name: str
-    args: dict | None
+__all__ = ["Task", "PlanResult"]
 
 
 class Task(BaseModel):
@@ -13,7 +10,7 @@ class Task(BaseModel):
     save: bool
 
 
-class Plan(BaseModel):
+class PlanResult(BaseModel):
     tasks: list[Task] | dict | None
     info_error: str | None
     error: str | None = None

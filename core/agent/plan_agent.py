@@ -12,7 +12,7 @@ from core.tool_manager import ToolManager
 from core.agent import BaseAgent
 from core.agent.runtime import RunTime
 from core.prompts.plan_prompt import PLAN_SYSTEM_PROMPT
-from structure.plan import Plan
+from core.structure import PlanResult
 from utils.sqlite_store import SQLiteStore
 from utils.logging_setup import configure_logging
 from utils.tui import ask_followup
@@ -44,7 +44,7 @@ class PlanAgent(BaseAgent):
         references: str,
         *args,
         **kwargs,
-    ) -> Plan:
+    ) -> PlanResult:
         """
         Plan with LangGraph HITL:
         - When plan lacks required info, graph interrupts
@@ -63,7 +63,7 @@ class PlanAgent(BaseAgent):
                 self.progress_store.finish_node(
                     run_id=run_id, node=self.node_name, final_context=final_context, status_code=0
                 )
-                return Plan(tasks=[], info_error=None, error=final_context)
+                return PlanResult(tasks=[], info_error=None, error=final_context)
             query = self._build_replan_query(query, references=references)
         next_input: dict | Command = {
             "query": query,
@@ -122,17 +122,17 @@ class PlanAgent(BaseAgent):
         logger.info(f"[Walnut-PlanAgent] Initialized message")
         return message
 
-    def parse_result(self, result: dict) -> Plan:
+    def parse_result(self, result: dict) -> PlanResult:
         try:
-            plan = Plan.model_validate(result)
+            plan = PlanResult.model_validate(result)
         except (json.JSONDecodeError, ValidationError) as e:
-            plan = Plan(tasks=result, info_error=None, error=str(e))
+            plan = PlanResult(tasks=result, info_error=None, error=str(e))
 
         logger.info(f"[Walnut-PlanAgent] Parsed result")
         return plan
 
-    async def _plan_once(self, query: str, runner: RunTime, tool_manager: ToolManager) -> Plan:
-        result: Plan
+    async def _plan_once(self, query: str, runner: RunTime, tool_manager: ToolManager) -> PlanResult:
+        result: PlanResult
 
         message: Message = self.init_message(Message(), tool_manager)
         message.add_message("user", query)

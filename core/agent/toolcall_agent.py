@@ -9,11 +9,16 @@ from core.tool_manager import ToolManager
 from core.agent import BaseAgent
 from core.agent.runtime import RunTime
 from core.prompts.toolcall_prompt import TOOLCALL_SYSTEM_PROMPT
-from structure.plan import Plan
-from structure.toolcall_structure import ToolCallObservation, ToolCallResult
-from structure.base_structure import Tool, ActionPayload, PlainText
+from core.structure import (
+    Tool,
+    ActionPayload,
+    PlanResult,
+    SkillServerSpec,
+    ToolCallObservation,
+    ToolCallStepResult,
+    ToolCallResult,
+)
 from utils.sqlite_store import SQLiteStore
-from utils.format import SkillServerSpec
 from utils.logging_setup import configure_logging
 
 logger = configure_logging("ToolCallAgent")
@@ -49,8 +54,9 @@ class ToolCallAgent(BaseAgent):
             logger.info(f"[Walnut-ToolCallAgent] Only the latest plan should be provided")
             return ToolCallResult(result="", error=final_context)
 
-        plan: Plan = Plan.model_validate_json(references[0])
+        plan: PlanResult = PlanResult.model_validate_json(references[0])
         tmp = []
+        step_results: dict[int, ToolCallStepResult] = {}
         for step, task in enumerate(plan.tasks):
             logger.info(f"[Walnut-ToolCallAgent] Running step {step} for task:")
             logger.debug(f"[Walnut-ToolCallAgent] Task details: {task.model_dump_json()}")
@@ -61,20 +67,22 @@ class ToolCallAgent(BaseAgent):
                 input={"query": query},
             ) as span:
                 if not tools:
-                    result: PlainText = await self.run_without_runtime(task.detail, tmp)
-                    result = result.result
+                    result: ToolCallStepResult = await self.run_without_runtime(task.detail, tmp)
                 elif tools and len(tools) == 1:
-                    result: PlainText = await self._run_single_step(
+                    result: ToolCallStepResult = await self._run_single_step(
                         tools[0], runner, Message(), tool_manager, run_id, tmp
                     )
-                    result = result.result
                 else:
-                    raw_result: list[PlainText] = await asyncio.gather(
+                    raw_result: list[ToolCallStepResult] = await asyncio.gather(
                         *(self._run_single_step(t, runner, Message(), tool_manager, run_id, tmp) for t in tools),
                         return_exceptions=True,
                     )
+                    # Aggregate the results from multiple tools into a single ToolCallStepResult
                     result = [f"{tools[idx].target} -> {r.result}" for idx, r in enumerate(raw_result)]
                     result = "\n".join(result)
+                step_results[step] = (
+                    result if isinstance(result, ToolCallStepResult) else ToolCallStepResult(result=result, error=None)
+                )
                 span.update(output=result)
 
             logger.info(f"[Walnut-ToolCallAgent] Finished step {step} for task")
@@ -82,11 +90,12 @@ class ToolCallAgent(BaseAgent):
             if task.save:
                 tmp.append(result)
 
-        final_context = result
-        result = ToolCallResult(result=final_context)
-        self.progress_store.finish_node(run_id=run_id, node=self.node_name, final_context=result.result, status_code=1)
+        final_result = ToolCallResult(result=step_results, error=None)
+        self.progress_store.finish_node(
+            run_id=run_id, node=self.node_name, final_context=final_result.model_dump_json(), status_code=1
+        )
         logger.info(f"[Walnut-ToolCallAgent] Finished all steps for run ID: {run_id}")
-        return result
+        return final_result
 
     def init_message(self, message: Message, tool_manager: ToolManager, skill_name: str) -> Message:
         tools = [
@@ -120,6 +129,9 @@ class ToolCallAgent(BaseAgent):
                 return ToolCallObservation(result="", error=str(e))
 
         return handler
+
+    def parse_result(self, result: str, *args, **kwargs) -> dict:
+        return ToolCallStepResult(result=result, error=None)
 
     def _parse_assets(self, root: Path, assets: list[str]) -> str:
         result = ""

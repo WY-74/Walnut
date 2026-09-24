@@ -4,7 +4,7 @@ from typing import Any, Awaitable, Callable
 from core.llm import LLM
 from core.message import Message
 from core.prompts.error import PARSE_LLM_RESPONSE_ERROR, RESULT_HANDLER_ERROR, ACTION_EMPTY_ERROR, ACTION_HANDLER_ERROR
-from structure.base_structure import ReAct, AgentPayload, ActionPayload
+from core.structure import ReAct, AgentPayload, ActionPayload
 from utils.logging_setup import configure_logging
 
 logger = configure_logging("RunTime")

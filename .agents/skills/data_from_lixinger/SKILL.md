@@ -1,6 +1,6 @@
 ---
 name: data-from-lixinger
-description: 支持在线查讯指数基本面信息(PE-TTM), 只有当用户要求查讯指数基本面信息时才会调用该skill, 该skill需要如下参数:
+description: 支持在线查讯指数基本面信息(PE-TTM), 并将结果保存到数据库. 只有当用户要求查讯指数基本面信息时才会调用该skill, 该skill需要如下参数:
   - Args:
     - stockcode: 待查讯指数的唯一代码
     - date: 日期，格式: YYYY-MM-DD
@@ -13,6 +13,7 @@ description: 支持在线查讯指数基本面信息(PE-TTM), 只有当用户要
 
 ## 执行流程
 1. **判断是否有唯一指数代码**: 通常指数代码包含数字或字母，不存在汉字和特殊字符。如果用户提供代码合规则继续，如果得到的指数代码结果为 None 或者不合规, 则直接返回 "stockCodes错误! 请重新确认指数名称再次查讯" 给用户, 不进行后续步骤.
-2. **执行查讯**：通过 `data_from_lixinger.fundamental` 工具获取指数的基本面信息.
+2. **本地查讯**：首先通过 `data_from_local.search_data` 工具在本地数据库中查找指数的基本面信息. 如果本地存在数据，则直接返回结果；如果本地不存在数据，则继续执行在线查讯步骤.
+2. **执行在线查讯**：通过 `data_from_lixinger.fundamental` 工具获取指数的基本面信息.
 3. **执行结果持久化**：通过 `data_from_local.add_data` 将查讯结果存储到本地数据库中.
 4. **返回结果**：将查询结果返回给用户。

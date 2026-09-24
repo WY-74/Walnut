@@ -8,7 +8,7 @@ from core.tool_manager import ToolManager
 from core.agent import BaseAgent
 from core.agent.runtime import RunTime
 from core.prompts.evaluator_prompt import EVALUATOR_SYSTEM_PROMPT
-from structure.evaluator_structure import EvaluatorResult
+from core.structure import EvaluatorResult
 from utils.sqlite_store import SQLiteStore
 from utils.logging_setup import configure_logging
 

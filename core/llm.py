@@ -3,7 +3,7 @@ import json
 
 from langfuse.openai import AsyncOpenAI
 from pydantic import ValidationError
-from structure.base_structure import ReAct
+from core.structure import ReAct
 from utils.logging_setup import configure_logging
 
 logger = configure_logging("LLM")

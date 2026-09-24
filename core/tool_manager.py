@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 from typing import Any, Dict
 
@@ -6,7 +5,7 @@ from mcp.client.stdio import stdio_client
 from mcp import ClientSession, StdioServerParameters
 from contextlib import AsyncExitStack, asynccontextmanager
 
-from utils.format import MCPServerSpec, SkillServerSpec, ToolSpec
+from core.structure import MCPServerSpec, SkillServerSpec, ToolSpec
 from utils.logging_setup import configure_logging
 
 logger = configure_logging("ToolManager")

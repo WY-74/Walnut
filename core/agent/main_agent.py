@@ -8,8 +8,7 @@ from core.tool_manager import ToolManager
 from core.agent import BaseAgent
 from core.agent.runtime import RunTime
 from core.prompts.main_prompt import MAIN_SYSTEM_PROMPT
-from structure.plan import Plan
-from structure.base_structure import Tool, AgentPayload, PlainText, MainActionResult
+from core.structure import AgentPayload, MainObservation
 from utils.sqlite_store import SQLiteStore
 from utils.artifact_store import ArtifactStore
 from utils.logging_setup import configure_logging
@@ -74,7 +73,7 @@ class MainAgent(BaseAgent):
                 logger.debug(f"[Walnut-MainAgent] Retrieved input artifacts: {input_artifacts}")
             except KeyError as error:
                 logger.error(f"[Walnut-MainAgent] Failed to retrieve input artifacts: {error}")
-                return MainActionResult(
+                return MainObservation(
                     artifact_id=None,
                     data=None,
                     error=f"{str(error)}",
@@ -96,7 +95,7 @@ class MainAgent(BaseAgent):
             )
 
             logger.info(f"[Walnut-MainAgent] Finished action")
-            return MainActionResult(
+            return MainObservation(
                 artifact_id=artifact_id,
                 data=step_result.model_dump_json(),
                 error=None,
