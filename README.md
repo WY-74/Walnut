@@ -25,23 +25,25 @@ Note: The token content should not be written in plaintext, otherwise it will be
 ## System Architecture
 ```mermaid
 flowchart TD
-classDef node fill:#1e1e1e,stroke:#4a90e2,stroke-width:1px,color:#fff
-classDef agent fill:#1e1e1e,stroke:#4a90e2,stroke-width:2px,color:#fff
-classDef invisible display:none
-classDef dashedContainer fill:#2b2b2b,stroke:#888,stroke-width:1px,stroke-dasharray:5 5,color:#fff
-classDef plainText fill:none,stroke:none,color:#fff,font-size:12px
+%% 定义样式（浅色背景）
+classDef node fill:#f5f7fa,stroke:#4a90e2,stroke-width:1px,color:#1f2328;
+classDef agent fill:#eaf2fd,stroke:#4a90e2,stroke-width:2px,color:#1f2328;
+classDef dashedContainer fill:#fafafa,stroke:#999,stroke-width:1px,stroke-dasharray: 5 5,color:#1f2328;
+classDef plainText fill:none,stroke:none,color:#1f2328,font-size:14px;
+classDef dots fill:none,stroke:none,color:#1f2328,font-size:18px;
 
+%% 用户层
 User[User]:::node
-CLI["main.py / CLI"]:::node
-MainAgent[MainAgent]:::agent
-FinalResult["Final Result"]:::node
 
-User --> CLI
-CLI --> MainAgent
-MainAgent --> FinalResult
+%% 主流程
+User --> CLI[CLI]:::node
+CLI --> MainAgent[MainAgent]:::agent
+MainAgent --> FinalResult[Final Result]:::node
 FinalResult --> User
 
-subgraph AgentOrchestration["Agent Orchestration"]
+%% Agent 编排层
+subgraph AgentOrchestration [Agent Orchestration]
+    MainAgent
     PlanAgent[PlanAgent]:::agent
     EvaluatorAgent[EvaluatorAgent]:::agent
     ToolCallAgent[ToolCallAgent]:::agent
@@ -54,49 +56,49 @@ subgraph AgentOrchestration["Agent Orchestration"]
     ToolCallAgent -.-> MainAgent
 end
 
-subgraph Infrastructure["Infrastructure"]
-    subgraph ToolSystem1["Tool System"]
+%% 基础设施层
+subgraph Infrastructure [Infrastructure]
+    subgraph ToolSystem1 [Tool System]
         direction TB
         ToolManager1[ToolManager]:::node
         Skills1[Skills]:::node
-        MCPTools1["MCP Tools"]:::node
+        MCPTools1[MCP Tools]:::node
 
         ToolManager1 --> Skills1
         Skills1 --> MCPTools1
     end
 
-    subgraph ToolSystem2["Tool System"]
+    subgraph ToolSystem2 [Tool System]
         direction TB
         ToolManager2[ToolManager]:::node
         Skills2[Skills]:::node
-        MCPTools2["MCP Tools"]:::node
+        MCPTools2[MCP Tools]:::node
 
         ToolManager2 --> Skills2
         Skills2 --> MCPTools2
     end
 
-    subgraph ToolSystemN["Tool System"]
+    subgraph ToolSystemN [Tool System]
         direction TB
-        MoreTools["..."]:::plainText
+        MoreTools("..."):::dots
     end
 
-    subgraph SharedComponents["Shared Components"]
+    subgraph SharedComponents [Shared Components]
         direction LR
-        Runtime["Runtime + LLM"]:::node
+        Runtime[Runtime/LLM]:::node
         ArtifactStore[ArtifactStore]:::node
         SQLiteStore[SQLiteStore]:::node
         LangFuse[LangFuse]:::node
     end
 end
 
+%% 分叉前增加 Parallel 文字节点
 ParallelLabel["Parallel"]:::plainText
-SplitNode[" "]:::invisible
 
 ToolCallAgent --> ParallelLabel
-ParallelLabel --> SplitNode
-SplitNode --> ToolSystem1
-SplitNode --> ToolSystem2
-SplitNode --> ToolSystemN
+ParallelLabel --> ToolSystem1
+ParallelLabel --> ToolSystem2
+ParallelLabel --> ToolSystemN
 
-class ToolSystemN dashedContainer
+class ToolSystemN dashedContainer;
 ```
