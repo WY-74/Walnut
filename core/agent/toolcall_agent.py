@@ -1,4 +1,5 @@
 import asyncio
+from langfuse import get_client
 from typing import Callable
 from pathlib import Path
 
@@ -8,14 +9,19 @@ from core.tool_manager import ToolManager
 from core.agent import BaseAgent
 from core.agent.runtime import RunTime
 from core.prompts.toolcall_prompt import TOOLCALL_SYSTEM_PROMPT
-from structure.plan import Plan
-from structure.toolcall_structure import ToolCallObservation, ToolCallResult
-from structure.base_structure import Tool, ActionPayload, PlainText
+from core.structure import (
+    Tool,
+    ActionPayload,
+    PlanResult,
+    SkillServerSpec,
+    ToolCallObservation,
+    ToolCallStepResult,
+    ToolCallResult,
+)
 from utils.sqlite_store import SQLiteStore
-from utils.format import SkillServerSpec
 from utils.logging_setup import configure_logging
 
-logger = configure_logging("SkillAgent")
+logger = configure_logging("ToolCallAgent")
 
 
 class ToolCallAgent(BaseAgent):
@@ -23,11 +29,14 @@ class ToolCallAgent(BaseAgent):
 
     def __init__(self, llm: LLM, progress_store: SQLiteStore | None = None, **sub_agents):
         super().__init__(llm=llm, progress_store=progress_store, sub_agent=sub_agents)
-        self.node_name = "skill"
+        self.node_name = "toolcall"
+        logger.info(f"[Walnut] ToolCallAgent initialized.")
 
     async def run(
         self, query: str, runner: RunTime, message: Message, tool_manager: ToolManager, run_id: str, references: str
     ) -> str:
+        logger.info(f"[Walnut-ToolCallAgent] ToolCallAgent running for run ID: {run_id}")
+        logger.debug(f"[Walnut-ToolCallAgent] ToolCallAgent running with: {locals()}")
         self.progress_store.start_node(run_id=run_id, node=self.node_name)
 
         if not references:
@@ -35,36 +44,58 @@ class ToolCallAgent(BaseAgent):
             self.progress_store.finish_node(
                 run_id=run_id, node=self.node_name, final_context=final_context, status_code=0
             )
+            logger.info(f"[Walnut-ToolCallAgent] No specific plan provided")
             return ToolCallResult(result="", error=final_context)
         if len(references) > 1:
             final_context = "仅提供最新计划即可, 无需其余参数"
             self.progress_store.finish_node(
                 run_id=run_id, node=self.node_name, final_context=final_context, status_code=0
             )
+            logger.info(f"[Walnut-ToolCallAgent] Only the latest plan should be provided")
             return ToolCallResult(result="", error=final_context)
 
-        plan: Plan = Plan.model_validate_json(references[0])
+        plan: PlanResult = PlanResult.model_validate_json(references[0])
         tmp = []
-        for step in plan.tasks:
-            tools = step.tools
-            if tools and len(tools) == 1:
-                result: PlainText = await self._run_single_step(tools[0], runner, Message(), tool_manager, run_id, tmp)
-                result = result.result
-            else:
-                raw_result: list[PlainText] = await asyncio.gather(
-                    *(self._run_single_step(t, runner, Message(), tool_manager, run_id, tmp) for t in tools),
-                    return_exceptions=True,
+        step_results: dict[int, ToolCallStepResult] = {}
+        for step, task in enumerate(plan.tasks):
+            logger.info(f"[Walnut-ToolCallAgent] Running step {step} for task:")
+            logger.debug(f"[Walnut-ToolCallAgent] Task details: {task.model_dump_json()}")
+            tools = task.tools
+            with get_client().start_as_current_observation(
+                as_type="span",
+                name=f"agent.toolcall-task{step}",
+                input={"query": query},
+            ) as span:
+                if not tools:
+                    result: ToolCallStepResult = await self.run_without_runtime(task.detail, tmp)
+                elif tools and len(tools) == 1:
+                    result: ToolCallStepResult = await self._run_single_step(
+                        tools[0], runner, Message(), tool_manager, run_id, tmp
+                    )
+                else:
+                    raw_result: list[ToolCallStepResult] = await asyncio.gather(
+                        *(self._run_single_step(t, runner, Message(), tool_manager, run_id, tmp) for t in tools),
+                        return_exceptions=True,
+                    )
+                    # Aggregate the results from multiple tools into a single ToolCallStepResult
+                    result = [f"{tools[idx].target} -> {r.result}" for idx, r in enumerate(raw_result)]
+                    result = "\n".join(result)
+                step_results[step] = (
+                    result if isinstance(result, ToolCallStepResult) else ToolCallStepResult(result=result, error=None)
                 )
-                result = [f"{tools[idx].target} -> {r.result}" for idx, r in enumerate(raw_result)]
-                result = "\n".join(result)
+                span.update(output=result)
 
-            if step.save:
+            logger.info(f"[Walnut-ToolCallAgent] Finished step {step} for task")
+            logger.debug(f"[Walnut-ToolCallAgent] Step {step} result: {result}")
+            if task.save:
                 tmp.append(result)
 
-        final_context = result
-        result = ToolCallResult(result=final_context)
-        self.progress_store.finish_node(run_id=run_id, node=self.node_name, final_context=result.result, status_code=1)
-        return result
+        final_result = ToolCallResult(result=step_results, error=None)
+        self.progress_store.finish_node(
+            run_id=run_id, node=self.node_name, final_context=final_result.model_dump_json(), status_code=1
+        )
+        logger.info(f"[Walnut-ToolCallAgent] Finished all steps for run ID: {run_id}")
+        return final_result
 
     def init_message(self, message: Message, tool_manager: ToolManager, skill_name: str) -> Message:
         tools = [
@@ -77,6 +108,7 @@ class ToolCallAgent(BaseAgent):
         message.context.append(
             {"role": "system", "content": TOOLCALL_SYSTEM_PROMPT.format(tools="\n".join(tools), detail=detail)}
         )
+        logger.info(f"[Walnut-ToolCallAgent-skill.{skill_name}] Initialized message")
         return message
 
     def handle_action(
@@ -91,11 +123,15 @@ class ToolCallAgent(BaseAgent):
                     tool: Tool = action.tool_call[0]
                     tool_name, raw_arguments = tool.name, tool.args
                     output = await tool_manager.call_mcp_tool(tool_name.strip(), raw_arguments)
+                    logger.info(f"[Walnut-ToolCallAgent-skill.{skill.skill_name}] Finished action")
                     return ToolCallObservation(result=str(output))
             except Exception as e:
                 return ToolCallObservation(result="", error=str(e))
 
         return handler
+
+    def parse_result(self, result: str, *args, **kwargs) -> dict:
+        return ToolCallStepResult(result=result, error=None)
 
     def _parse_assets(self, root: Path, assets: list[str]) -> str:
         result = ""
@@ -109,22 +145,24 @@ class ToolCallAgent(BaseAgent):
         self, tool: Tool, runner: RunTime, message: Message, tool_manager: ToolManager, run_id: str, extra: list
     ):
         # Get skill
+        logger.info(f"[Walnut-ToolCallAgent] Running skill: {tool.name}")
         name = tool.name
         if name.startswith("skill."):
             name = name.split(".", 1)[-1]
         skill: SkillServerSpec = tool_manager.get_skill(name)
         if skill is None:
-            final_context = f"没有找到Skill: {name}"
+            final_context = f"没有找到Skill: skill.{name}"
             self.progress_store.finish_node(
                 run_id=run_id, node=self.node_name, final_context=final_context, status_code=0
             )
+            logger.error(f"[Walnut-ToolCallAgent] Skill not found: skill.{name}")
             raise KeyError(final_context)
 
         args = tool.args
         query = self._build_task_query(tool.target, args, extra)
 
         # Execute
-        message = self.init_message(message, tool_manager, name)
+        message = self.init_message(message, tool_manager, skill.skill_name)
         message.add_message("user", query)
 
         step_result = await runner.run(
@@ -134,6 +172,7 @@ class ToolCallAgent(BaseAgent):
             action_handler=self.handle_action(runner, tool_manager, run_id, skill),
             caller=self.__class__.__name__,
         )
+        logger.info(f"[Walnut-ToolCallAgent] Finished running skill: skill.{skill.skill_name}")
 
         return step_result
 

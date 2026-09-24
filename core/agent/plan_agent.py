@@ -1,4 +1,5 @@
 import json
+from langfuse import get_client
 from typing import TypedDict, Any
 from pydantic import ValidationError
 from langgraph.graph import START, END, StateGraph
@@ -11,7 +12,7 @@ from core.tool_manager import ToolManager
 from core.agent import BaseAgent
 from core.agent.runtime import RunTime
 from core.prompts.plan_prompt import PLAN_SYSTEM_PROMPT
-from structure.plan import Plan
+from core.structure import PlanResult
 from utils.sqlite_store import SQLiteStore
 from utils.logging_setup import configure_logging
 from utils.tui import ask_followup
@@ -31,25 +32,45 @@ class PlanAgent(BaseAgent):
     def __init__(self, llm: LLM, progress_store: SQLiteStore | None = None, **sub_agents):
         super().__init__(llm=llm, progress_store=progress_store, sub_agent=sub_agents)
         self.node_name = "plan"
+        logger.info(f"[Walnut] PlanAgent initialized.")
 
     async def run(
-        self, query: str, runner: RunTime, message: Message, tool_manager: ToolManager, run_id: str, *args, **kwargs
-    ) -> Plan:
+        self,
+        query: str,
+        runner: RunTime,
+        message: Message,
+        tool_manager: ToolManager,
+        run_id: str,
+        references: str,
+        *args,
+        **kwargs,
+    ) -> PlanResult:
         """
         Plan with LangGraph HITL:
         - When plan lacks required info, graph interrupts
         - Human provides missing info
         - Graph resumes and replans until success
         """
+        logger.info(f"[Walnut-PlanAgent] PlanAgent running for run ID: {run_id}")
+        logger.debug(f"[Walnut-PlanAgent] PlanAgent running with: {locals()}")
         self.progress_store.start_node(run_id=run_id, node=self.node_name)
 
         graph = self._build_hitl_graph(runner=runner, tool_manager=tool_manager)
         graph_config = {"configurable": {"thread_id": run_id}}
+        if references:
+            if len(references) != 2:
+                final_context = "需要提供旧计划以及评判结果才可以完成重新规划"
+                self.progress_store.finish_node(
+                    run_id=run_id, node=self.node_name, final_context=final_context, status_code=0
+                )
+                return PlanResult(tasks=[], info_error=None, error=final_context)
+            query = self._build_replan_query(query, references=references)
         next_input: dict | Command = {
             "query": query,
             "pending_question": None,
             "plan": None,
         }
+        logger.info("[Walnut-PlanAgent] Build HITL graph")
         try:
             while True:
                 result = await graph.ainvoke(next_input, config=graph_config)
@@ -64,6 +85,9 @@ class PlanAgent(BaseAgent):
                         self.progress_store.finish_node(
                             run_id=run_id, node=self.node_name, final_context=final_context, status_code=0
                         )
+                        logger.error(
+                            f"[Walnut-PlanAgent] Missing information and no answer provided for question: {question}"
+                        )
                         raise Exception(final_context)
 
                     next_input = Command(resume=answer)
@@ -75,10 +99,12 @@ class PlanAgent(BaseAgent):
                     self.progress_store.finish_node(
                         run_id=run_id, node=self.node_name, final_context=final_context, status_code=0
                     )
+                    logger.error(f"[Walnut-PlanAgent] No valid plan returned from HITL process")
                     raise Exception(final_context)
 
                 plan = self.parse_result(plan)
                 self.progress_store.finish_node(run_id=run_id, node=self.node_name, final_context=plan, status_code=1)
+                logger.info(f"[Walnut-PlanAgent] Finished running for run ID: {run_id}")
                 return plan
 
         except Exception as e:
@@ -93,23 +119,33 @@ class PlanAgent(BaseAgent):
 
         message.reset_context()
         message.context.append({"role": "system", "content": PLAN_SYSTEM_PROMPT.format(tools='\n'.join(tools))})
+        logger.info(f"[Walnut-PlanAgent] Initialized message")
         return message
 
-    def parse_result(self, result: dict) -> Plan:
+    def parse_result(self, result: dict) -> PlanResult:
         try:
-            plan = Plan.model_validate(result)
+            plan = PlanResult.model_validate(result)
         except (json.JSONDecodeError, ValidationError) as e:
-            plan = Plan(tasks=result, info_error=None, error=str(e))
+            plan = PlanResult(tasks=result, info_error=None, error=str(e))
 
+        logger.info(f"[Walnut-PlanAgent] Parsed result")
         return plan
 
-    async def _plan_once(self, query: str, runner: RunTime, tool_manager: ToolManager) -> Plan:
-        result: Plan
+    async def _plan_once(self, query: str, runner: RunTime, tool_manager: ToolManager) -> PlanResult:
+        result: PlanResult
 
-        message = self.init_message(Message(), tool_manager)
+        message: Message = self.init_message(Message(), tool_manager)
         message.add_message("user", query)
+        with get_client().start_as_current_observation(
+            as_type="span",
+            name="agent.plan",
+            input={"query": query},
+        ) as span:
+            result = await runner.run(
+                message, self.llm, result_handler=self.parse_result, caller=self.__class__.__name__
+            )
+            span.update(output=result.model_dump())
 
-        result = await runner.run(message, self.llm, result_handler=self.parse_result, caller=self.__class__.__name__)
         return result
 
     def _build_hitl_graph(self, runner: RunTime, tool_manager: ToolManager):
@@ -185,3 +221,11 @@ class PlanAgent(BaseAgent):
         if not supplement:
             return original
         return f"{original}\n补充信息: {supplement}"
+
+    def _build_replan_query(self, query: str, references: list[str]) -> str:
+        """
+        Build a replan query that includes the original query and references.
+        """
+        references = "\n\n".join(references)
+        query = f"当前已有一份计划, 需要将其依据评判结果重新生成计划, 原计划与评判结果如下:\n\n{references}"
+        return query

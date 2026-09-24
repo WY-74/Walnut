@@ -1,0 +1,8 @@
+langgraph==1.2.11
+mcp==1.27.1
+openai==2.37.0
+pydantic==2.13.4
+pyfiglet==1.0.4
+requests==2.34.2
+rich==15.0.0
+langfuse==4.15.4

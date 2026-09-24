@@ -1,4 +1,3 @@
-import json
 import copy
 import uuid
 import hashlib
@@ -6,11 +5,16 @@ from typing import Any
 from threading import Lock
 from collections import defaultdict
 
+from utils.logging_setup import configure_logging
+
+logger = configure_logging("ArtifactStore")
+
 
 class ArtifactStore:
     def __init__(self):
         self._artifacts: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
         self._lock = Lock()
+        logger.info(f"[Walnut] ArtifactStore initialized.")
 
     def get(self, run_id, artifact_id):
         try:
